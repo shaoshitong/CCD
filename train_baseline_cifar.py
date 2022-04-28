@@ -22,9 +22,9 @@ import math
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='resnet18', type=str, help='network architecture')
+parser.add_argument('--arch', default='wrn_16_2', type=str, help='network architecture')
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -39,7 +39,7 @@ parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
-parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='checkpoint dir')
+parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher', type=str, help='checkpoint dir')
 
 
 # global hyperparameter set
