@@ -324,6 +324,6 @@ def resnet50_imagenet_aux(**kwargs):
 
 if __name__ == '__main__':
     net = resnet34_imagenet_aux(num_classes=1000)
-    from utils import cal_param_size, cal_multi_adds
+    from C100.utils import cal_param_size, cal_multi_adds
     print('Params: %.2fM, Multi-adds: %.3fM'
           % (cal_param_size(net) / 1e6, cal_multi_adds(net, (2, 3, 224, 224)) / 1e6))

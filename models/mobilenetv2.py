@@ -322,6 +322,6 @@ if __name__ == '__main__':
     logit, ss_logits = net(x)
     print(logit)
     print(ss_logits)
-    from utils import cal_param_size, cal_multi_adds
+    from C100.utils import cal_param_size, cal_multi_adds
     print('Params: %.2fM, Multi-adds: %.3fM'
           % (cal_param_size(net) / 1e6, cal_multi_adds(net, (2, 3, 32, 32)) / 1e6))

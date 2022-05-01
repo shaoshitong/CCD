@@ -93,9 +93,9 @@ Note that the specific teacher network should be pre-trained before training the
 python train_student_cifar.py \
     --tarch wrn_40_2_aux \
     --arch wrn_16_2_aux \
-    --tcheckpoint ./checkpoint/train_teacher_cifar_arch_wrn_40_2_aux_dataset_cifar100_seed0/wrn_40_2_aux.pth.tar \
-    --checkpoint-dir ./checkpoint \
-    --data ./data \
+    --tcheckpoint /home/Bigdata/kd/store/train_teacher_cifar_arch_wrn_40_2_aux_dataset_cifar100_seed0/wrn_40_2_aux.pth.tar \
+    --checkpoint-dir /home/Bigdata/kd/store/ \
+    --data /data/data \
     --gpu 0 --manual 0
 ```
 

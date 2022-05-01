@@ -16,7 +16,7 @@ import numpy as np
 import models
 import torchvision
 import torchvision.transforms as transforms
-from utils import cal_param_size, cal_multi_adds
+from C10.utils import cal_param_size, cal_multi_adds
 
 
 from bisect import bisect_right

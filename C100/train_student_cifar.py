@@ -37,6 +37,7 @@ parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
 parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
+parser.add_argument('--aux-weight', type=float, default=1., help='the loss weight of aux')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
@@ -52,7 +53,7 @@ log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'seed'+ str(args.manual_seed) +'.txt'
+          'seed'+ str(args.manual_seed) +'without_aux.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -213,7 +214,7 @@ def train(epoch, criterion_list, optimizer):
 
         loss_cls = loss_cls + criterion_cls(logits[0::4], target)
         for i in range(len(ss_logits)):
-            loss_div = loss_div + criterion_div(ss_logits[i], t_ss_logits[i].detach())
+            loss_div = loss_div + criterion_div(ss_logits[i], t_ss_logits[i].detach())*args.aux_weight
         
         loss_div = loss_div + criterion_div(logits, t_logits.detach())
         
