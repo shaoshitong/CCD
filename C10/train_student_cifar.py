@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
+from torch.utils.data import Dataset,DataLoader
 import torch.nn.functional as F
-
-import os
+import os,sys
+print(os.getcwd())
+sys.path.append(os.path.join(os.getcwd()))
 import shutil
 import argparse
 import numpy as np
@@ -31,11 +33,11 @@ parser.add_argument('--tcheckpoint', default='wrn_40_2_aux.pth.tar', type=str, h
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[46,68], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=64, help='batch size')
+parser.add_argument('--epochs', type=int, default=91, help='number of epochs to train')
+parser.add_argument('--batch-size', type=int, default=32, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--aux-weight', type=float, default=1., help='the loss weight of aux')
 parser.add_argument('--gpu-id', type=str, default='0')
@@ -44,6 +46,7 @@ parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD di
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='directory fot storing checkpoints')
+parser.add_argument('--i', default=0, type=int, help='number')
 
 # global hyperparameter set
 args = parser.parse_args()
@@ -53,7 +56,7 @@ log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'seed'+ str(args.manual_seed) +'without_aux.txt'
+          'seed'+ str(args.manual_seed) +f'with_aux_{args.i}_2倍.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -73,7 +76,7 @@ np.random.seed(args.manual_seed)
 torch.manual_seed(args.manual_seed)
 torch.cuda.manual_seed_all(args.manual_seed)
 torch.set_printoptions(precision=4)
-
+torch.backends.cudnn.fastest=True
 
 num_classes = 10
 trainset = torchvision.datasets.CIFAR10(root=args.data, train=True, download=True,
@@ -92,10 +95,10 @@ testset = torchvision.datasets.CIFAR10(root=args.data, train=False, download=Tru
                                                                 [0.2675, 0.2565, 0.2761]),
                                         ]))
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
-                                    pin_memory=(torch.cuda.is_available()))
+                                    pin_memory=(torch.cuda.is_available()),num_workers=8)
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
-                                    pin_memory=(torch.cuda.is_available()))
+                                    pin_memory=(torch.cuda.is_available()),num_workers=8)
 
 print('==> Building model..')
 net = getattr(models, args.tarch)(num_classes=num_classes)
@@ -129,7 +132,7 @@ _, ss_logits = net(torch.randn(2, 3, 32, 32))
 num_auxiliary_branches = len(ss_logits)
 cudnn.benchmark = True
 
-
+torch.backends.cudnn.fastest=True
 class DistillKL(nn.Module):
     """Distilling the Knowledge in a Neural Network"""
     def __init__(self, T):

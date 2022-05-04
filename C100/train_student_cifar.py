@@ -4,7 +4,9 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 
-import os
+import os,sys
+print(os.getcwd())
+sys.path.append(os.path.join(os.getcwd()))
 import shutil
 import argparse
 import numpy as np
@@ -31,10 +33,10 @@ parser.add_argument('--tcheckpoint', default='wrn_40_2_aux.pth.tar', type=str, h
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[75,90,105], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=120, help='number of epochs to train')
 parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--aux-weight', type=float, default=1., help='the loss weight of aux')
@@ -44,16 +46,18 @@ parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD di
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='directory fot storing checkpoints')
+parser.add_argument('--i', default=0, type=int, help='number')
 
 # global hyperparameter set
 args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
+
 log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'seed'+ str(args.manual_seed) +'without_aux.txt'
+          'seed'+ str(args.manual_seed) +f'with_aux_{args.i}_2倍.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\

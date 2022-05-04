@@ -278,3 +278,8 @@ sudo python train_student_imagenet.py \
   year={2021}
 }
 ```
+
+```c10
+python C10/train_teacher_cifar.py     --arch resnet56_aux     --milestones 30 60 90 --epochs 100     --checkpoint-dir /home/Bigdata/kd/store     --data /data/data      --gpu 0 --manual 0     --pretrained-backbone /home/Bigdata/ckpt/torchdistill/cifar10-resnet56.pt     --freezed
+python train_student_cifar.py     --tarch wrn_40_2_aux     --arch wrn_16_2_aux     --tcheckpoint /home/Bigdata/kd/store/train_teacher_cifar_arch_wrn_40_2_aux_dataset_cifar100_seed0/wrn_40_2_aux.pth.tar     --checkpoint-dir /home/Bigdata/kd/store/     --data /data/data     --gpu 0 --manual 0 --aux-weight 0.
+```
