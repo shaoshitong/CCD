@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 from sklearn import manifold, datasets
 import datetime
 
+colors=['#F9F871','#FFC75F','#FFC75F','#FF6F91','#D65DB1','#845EC2','#008E9B','#2C73D2','#B0A8B9','#4B4453','#4FFBDF','#FFD0FF','#008AC4']
 
 def get_datetime_str(style='dt'):
     cur_time = datetime.datetime.now()
 
-    date_str = cur_time.strftime('%y/%m/%d/')
-    time_str = cur_time.strftime('%H:%M:%S')
+    date_str = cur_time.strftime('%y_%m_%d_')
+    time_str = cur_time.strftime('%H_%M_%S')
 
     if style == 'data':
         return date_str
@@ -53,9 +54,9 @@ def T_SNE(X, y, if_save_image=False, **kwargs):
     if kwargs.get("n_components", 2) == 2:
         ax = fig.add_subplot(111)
         if kwargs.get("cmap", False):
-            ax.scatter(X_norm[:, 0], X_norm[:, 1], s=kwargs.get("s", 5), c=[plt.cm.Set1(y[i]) for i in y], cmap='viridis')
+            ax.scatter(X_norm[:, 0], X_norm[:, 1], cmap='viridis',alpha=0.9)
         else:
-            ax.scatter(X_norm[:, 0], X_norm[:, 1], cmap='viridis')
+            ax.scatter(X_norm[:, 0], X_norm[:, 1], s=kwargs.get("s", 5), c=[colors[y[i]] for i in y], cmap='viridis',alpha=0.9)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_xlabel("X")
@@ -64,10 +65,9 @@ def T_SNE(X, y, if_save_image=False, **kwargs):
     else:
         ax = fig.add_subplot(111, projection='3d')
         if kwargs.get("cmap", False):
-            ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=[plt.cm.Set1(y[i]) for i in y], cmap='viridis')
+            ax.scatter(X[:, 0], X[:, 1], X[:, 2],s=kwargs.get("s", 5), cmap='viridis',alpha=0.9)
         else:
-            print("yes")
-            ax.scatter(X[:, 0], X[:, 1], X[:, 2],s=kwargs.get("s", 5), cmap='viridis')
+            ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=[colors[y[i]] for i in y], cmap='viridis',alpha=0.9)
         if kwargs.get("view_init", None) != None:
             ax.view_init(kwargs["view_init"][0], kwargs["view_init"][1])
         else:
