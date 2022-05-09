@@ -56,7 +56,7 @@ def T_SNE(X, y, if_save_image=False, **kwargs):
         if kwargs.get("cmap", False):
             ax.scatter(X_norm[:, 0], X_norm[:, 1], cmap='viridis',alpha=0.9)
         else:
-            ax.scatter(X_norm[:, 0], X_norm[:, 1], s=kwargs.get("s", 5), c=[colors[y[i]] for i in y], cmap='viridis',alpha=0.9)
+            ax.scatter(X_norm[:, 0], X_norm[:, 1], s=kwargs.get("s", 5), c=[colors[i] for i in y], cmap='viridis',alpha=0.9)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_xlabel("X")
@@ -67,7 +67,7 @@ def T_SNE(X, y, if_save_image=False, **kwargs):
         if kwargs.get("cmap", False):
             ax.scatter(X[:, 0], X[:, 1], X[:, 2],s=kwargs.get("s", 5), cmap='viridis',alpha=0.9)
         else:
-            ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=[colors[y[i]] for i in y], cmap='viridis',alpha=0.9)
+            ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=[colors[i] for i in y], cmap='viridis',alpha=0.9)
         if kwargs.get("view_init", None) != None:
             ax.view_init(kwargs["view_init"][0], kwargs["view_init"][1])
         else:
