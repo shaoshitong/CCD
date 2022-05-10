@@ -1,0 +1,36 @@
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558
+Epoch:0	 lr:0.05000	 duration:30.312
+ train_loss:11.42151	 train_loss_div:11.42151test epoch:0	 test_loss_cls:4.24476
+Epoch:1	 lr:0.05000	 duration:31.350
+ train_loss:8.83000	 train_loss_div:8.83000test epoch:1	 test_loss_cls:2.87078
+Epoch:2	 lr:0.05000	 duration:31.320
+ train_loss:7.33401	 train_loss_div:7.33401test epoch:2	 test_loss_cls:3.22304
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558	 test_acc:0.76450
+Epoch:0	 lr:0.05000	 duration:24.528
+ train_loss:11.31814	 train_loss_div:11.31814test epoch:0	 test_loss_cls:3.91840	 test_acc:0.15610
+Epoch:1	 lr:0.05000	 duration:23.783
+ train_loss:8.69596	 train_loss_div:8.69596test epoch:1	 test_loss_cls:2.98730	 test_acc:0.29330
+Epoch:2	 lr:0.05000	 duration:24.178
+ train_loss:7.23437	 train_loss_div:7.23437test epoch:2	 test_loss_cls:2.44649	 test_acc:0.38610
+Epoch:3	 lr:0.05000	 duration:24.024
+ train_loss:6.50746	 train_loss_div:6.50746test epoch:3	 test_loss_cls:2.71816	 test_acc:0.38020
+Epoch:4	 lr:0.05000	 duration:24.886
+ train_loss:6.03944	 train_loss_div:6.03944test epoch:4	 test_loss_cls:2.09714	 test_acc:0.46260
+Epoch:5	 lr:0.05000	 duration:25.047
+ train_loss:5.73636	 train_loss_div:5.73636test epoch:5	 test_loss_cls:1.99899	 test_acc:0.49170
+Epoch:6	 lr:0.05000	 duration:24.856
+ train_loss:5.52263	 train_loss_div:5.52263test epoch:6	 test_loss_cls:2.04927	 test_acc:0.49540
+Epoch:7	 lr:0.05000	 duration:24.904
+ train_loss:5.36677	 train_loss_div:5.36677test epoch:7	 test_loss_cls:1.88449	 test_acc:0.52800
+Epoch:8	 lr:0.05000	 duration:24.899
+ train_loss:5.25733	 train_loss_div:5.25733test epoch:8	 test_loss_cls:2.30714	 test_acc:0.48050
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558	 test_acc:0.76450

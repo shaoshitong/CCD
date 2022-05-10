@@ -19,6 +19,7 @@ from bisect import bisect_right
 import time
 import math
 
+
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
@@ -46,7 +47,7 @@ parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='
 # global hyperparameter set
 args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
-
+scaler=torch.cuda.amp.GradScaler()
 log_txt = 'result/' + str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
           'arch' + '_' + args.arch + '_' + \
@@ -71,7 +72,8 @@ np.random.seed(args.manual_seed)
 torch.manual_seed(args.manual_seed)
 torch.cuda.manual_seed_all(args.manual_seed)
 torch.set_printoptions(precision=4)
-
+torch.backends.cudnn.benchmark=True
+torch.backends.cudnn.fastest=True
 criterion_cls = nn.CrossEntropyLoss()
 criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
@@ -91,10 +93,10 @@ testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=Tr
                                             transforms.Normalize([0.5071, 0.4867, 0.4408],
                                                                  [0.2675, 0.2565, 0.2761]),
                                         ]))
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,num_workers=8,
                                           pin_memory=(torch.cuda.is_available()))
 
-testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,num_workers=8,
                                          pin_memory=(torch.cuda.is_available()))
 
 print('==> Building model..')
@@ -193,16 +195,17 @@ def train(epoch, criterion_list, optimizer):
         if epoch < args.warmup_epoch:
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
         optimizer.zero_grad()
-        logits = net(input)
+        with torch.cuda.amp.autocast(enabled=True):
+            logits = net(input)
         with torch.no_grad():
             t_logits = tnet(input)
-
         loss_div = torch.tensor(0.).cuda()
         loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
         loss = loss_div
-        loss.backward()
-        optimizer.step()
 
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         train_loss += loss.item() / len(trainloader)
         train_loss_div += loss_div.item() / len(trainloader)
 
@@ -211,8 +214,8 @@ def train(epoch, criterion_list, optimizer):
         top5_num += top5
         total += target.size(0)
 
-        print('Epoch:{}, batch_idx:{}/{}, lr:{:.5f}, Duration:{:.2f}, Top-1 Acc:{:.4f}'.format(
-            epoch, batch_idx, len(trainloader), lr, time.time() - batch_start_time, (top1_num / (total)).item()))
+        # print('Epoch:{}, batch_idx:{}/{}, lr:{:.5f}, Duration:{:.2f}, Top-1 Acc:{:.4f}'.format(
+        #     epoch, batch_idx, len(trainloader), lr, time.time() - batch_start_time, (top1_num / (total)).item()))
     with open(log_txt, 'a+') as f:
         f.write('Epoch:{}\t lr:{:.5f}\t duration:{:.3f}'
                 '\n train_loss:{:.5f}\t train_loss_div:{:.5f}'
@@ -246,8 +249,8 @@ def test(epoch, criterion_cls, net):
             print('Epoch:{}, batch_idx:{}/{}, Duration:{:.2f}, Top-1 Acc:{:.4f}'.format(
                 epoch, batch_idx, len(testloader), time.time() - batch_start_time, (top1_num / (total)).item()))
         with open(log_txt, 'a+') as f:
-            f.write('test epoch:{}\t test_loss_cls:{:.5f}\n'
-                    .format(epoch, test_loss_cls ))
+            f.write('test epoch:{}\t test_loss_cls:{:.5f}\t test_acc:{:.5f}\n'
+                    .format(epoch, test_loss_cls ,(top1_num / (total)).item()))
 
     return round((top1_num/(total)).item(), 4)
 
