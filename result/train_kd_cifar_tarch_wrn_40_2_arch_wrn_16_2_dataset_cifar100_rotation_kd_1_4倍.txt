@@ -1,0 +1,33 @@
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth.tar', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558
+==========
+Args:Namespace(arch='wrn_16_2', batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_kd_cifar_tarch_wrn_40_2_arch_wrn_16_2_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=240, evaluate=False, gpu_id='0', init_lr=0.05, kd_T=3, kd_alpha=0.5, kd_weight=2, lr_type='multistep', manual_seed=0, milestones=[150, 180, 210], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2', tcheckpoint='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', warmup_epoch=0, weight_decay=0.0005)
+==========
+test epoch:0	 test_loss_cls:1.04558

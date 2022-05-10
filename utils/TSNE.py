@@ -81,7 +81,7 @@ def T_SNE(X, y, if_save_image=False, **kwargs):
         ax.set_zlabel("Z ", rotation=0)
 
         ax.set_title(kwargs.get("title", ""))
-    plt.show()
     if if_save_image:
         plt.savefig(get_datetime_str() + ".png")
+    plt.show()
 

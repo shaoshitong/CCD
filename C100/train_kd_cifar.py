@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
-
-import os
+import os,sys
+print(os.getcwd())
+sys.path.append(os.path.join(os.getcwd()))
 import shutil
 import argparse
 import numpy as np
@@ -35,9 +36,9 @@ parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
-parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
-parser.add_argument('--kd_alpha', type=float, default=0.5, help='temperature for KD distillation')
-parser.add_argument('--kd_weight', type=float, default=2, help='temperature for KD distillation')
+parser.add_argument('--kd-T', type=float, default=3, help='temperature for KD distillation')
+parser.add_argument('--kd-alpha', type=float, default=0.5, help='temperature for KD distillation')
+parser.add_argument('--kd-weight', type=float, default=2, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='directory fot storing checkpoints')
@@ -50,7 +51,7 @@ log_txt = 'result/' + str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
           'arch' + '_' + args.arch + '_' + \
           'dataset' + '_' + args.dataset + '_' + \
-          'seed' + str(args.manual_seed) + '.txt'
+          'rotation_kd' + '_1_4倍' + '.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
@@ -70,6 +71,9 @@ np.random.seed(args.manual_seed)
 torch.manual_seed(args.manual_seed)
 torch.cuda.manual_seed_all(args.manual_seed)
 torch.set_printoptions(precision=4)
+
+criterion_cls = nn.CrossEntropyLoss()
+criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
 num_classes = 100
 trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=True,
@@ -116,7 +120,8 @@ net = torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
 tnet = tmodel(num_classes=num_classes).cuda()
-tnet.load_state_dict(checkpoint['net'])
+tnet.load_state_dict(checkpoint['state_dict'])
+print(checkpoint['acc'])
 tnet.eval()
 tnet = torch.nn.DataParallel(tnet)
 cudnn.benchmark = True
@@ -182,10 +187,13 @@ def train(epoch, criterion_list, optimizer):
         batch_start_time = time.time()
         input = input.float().cuda()
         target = target.cuda()
+        size = input.shape[1:]
+        input = torch.stack([torch.rot90(input, k, (2, 3)) for k in range(4)], 1).view(-1, *size)
+        target = torch.stack([target for i in range(4)], 1).view(-1)
         if epoch < args.warmup_epoch:
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
         optimizer.zero_grad()
-        logits = net(input, grad=True)
+        logits = net(input)
         with torch.no_grad():
             t_logits = tnet(input)
 
@@ -246,8 +254,7 @@ def test(epoch, criterion_cls, net):
 if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-    criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_aplha)
+
 
     if args.evaluate:
         print('load pre-trained weights from: {}'.format(

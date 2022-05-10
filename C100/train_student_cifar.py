@@ -57,7 +57,7 @@ log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'seed'+ str(args.manual_seed) +f'with_aux_{args.i}_2倍.txt'
+          'seed'+ str(args.manual_seed) +f'without_aux_{args.i}_2倍.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\

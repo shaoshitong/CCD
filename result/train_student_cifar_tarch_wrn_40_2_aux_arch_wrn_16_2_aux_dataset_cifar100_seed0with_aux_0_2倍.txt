@@ -1,6 +1,0 @@
-==========
-Args:Namespace(arch='wrn_16_2_aux', aux_weight=1.0, batch_size=64, checkpoint_dir='/home/Bigdata/kd/store/train_student_cifar_tarch_wrn_40_2_aux_arch_wrn_16_2_aux_dataset_cifar100_seed0', data='/data/data', dataset='cifar100', epochs=120, evaluate=False, gpu_id='0', i=0, init_lr=0.05, kd_T=3, lr_type='multistep', manual_seed=0, milestones=[75, 90, 105], num_workers=8, resume=False, sgdr_t=300, tarch='wrn_40_2_aux', tcheckpoint='/home/Bigdata/kd/store/train_teacher_cifar_arch_wrn_40_2_aux_dataset_cifar100_seed0/wrn_40_2_aux.pth.tar', warmup_epoch=0, weight_decay=0.0005)
-==========
-test epoch:0	 test_loss_cls:1.04558
-Top-1 ss_accuracy: [0.65, 0.6165, 0.5504]
-Top-1 class_accuracy: [0.6653, 0.6423, 0.5813, 0.7645]

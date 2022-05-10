@@ -52,7 +52,7 @@ log_txt = 'result/' + str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
           'arch' + '_' + args.arch + '_' + \
           'dataset' + '_' + args.dataset + '_' + \
-          'seed' + str(args.manual_seed) + '.txt'
+           'rotation_kd'+'_1' + '.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
@@ -192,7 +192,7 @@ def train(epoch, criterion_list, optimizer):
             t_logits = tnet(input)
 
         loss_div = torch.tensor(0.).cuda()
-        loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
+        loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight + criterion_cls(logits, target)
         loss = loss_div
         loss.backward()
         optimizer.step()

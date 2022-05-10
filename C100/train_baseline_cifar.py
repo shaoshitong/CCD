@@ -14,17 +14,17 @@ import models
 import torchvision
 import torchvision.transforms as transforms
 from utils import cal_param_size, cal_multi_adds
-
-
+from data.datasets import PolicyDatasetC100
 from bisect import bisect_right
 import time
 import math
+scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2', type=str, help='network architecture')
+parser.add_argument('--arch', default='wrn_40_2', type=str, help='network architecture')
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -32,14 +32,14 @@ parser.add_argument('--milestones', default=[150,180,210], type=list, help='mile
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=64, help='batch size')
+parser.add_argument('--batch-size', type=int, default=128, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='number workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
-parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher', type=str, help='checkpoint dir')
+parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/onpolicy/', type=str, help='checkpoint dir')
 
 
 # global hyperparameter set
@@ -72,6 +72,8 @@ torch.set_printoptions(precision=4)
 # -----------------------------------------------------------------------------------------
 
 num_classes = 100
+
+
 trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=True,
                                         transform=transforms.Compose([
                                             transforms.RandomCrop(32, padding=4),
@@ -81,6 +83,7 @@ trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=Tr
                                                                 [0.2675, 0.2565, 0.2761])
                                         ]))
 
+trainset = PolicyDatasetC100(trainset)
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
                                         transform=transforms.Compose([
                                             transforms.ToTensor(),
@@ -184,20 +187,23 @@ def train(epoch, criterion_list, optimizer):
     for batch_idx, (input, target) in enumerate(trainloader):
         batch_start_time = time.time()
         input = input.float().cuda()
+        b,m,c,h,w=input.shape
         target = target.cuda()
+        input = input.view(-1,c,h,w)
+        target=target.view(-1,target.shape[-1])[:,0].long()
 
         if epoch < args.warmup_epoch:
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
 
         optimizer.zero_grad()
-        logits = net(input)
-
-        loss_cls = criterion_cls(logits, target)
+        with torch.cuda.amp.autocast(enabled=True):
+            logits = net(input)
+            loss_cls = criterion_cls(logits, target)
 
         loss = loss_cls
-        loss.backward()
-        optimizer.step()
-
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         train_loss += loss.item() / len(trainloader)
         train_loss_cls += loss_cls.item() / len(trainloader)
 
