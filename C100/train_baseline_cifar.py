@@ -39,7 +39,7 @@ parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
-parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/onpolicy/', type=str, help='checkpoint dir')
+parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/onpolicy2/', type=str, help='checkpoint dir')
 
 
 # global hyperparameter set

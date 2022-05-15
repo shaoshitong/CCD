@@ -115,7 +115,6 @@ class PolicyDatasetC10(BaseDatasetWrapper):
         self.policies = [
             SubPolicy(0.5, 'invert', 7),
             SubPolicy(0.5, 'rotate', 2),
-            SubPolicy(0.5, 'sharpness', 1),
             SubPolicy(0.5, 'shearY', 8),
             SubPolicy(0.5, 'autocontrast', 8),
             SubPolicy(0.5, 'color', 3),
@@ -144,8 +143,6 @@ class PolicyDatasetC10(BaseDatasetWrapper):
         elif not isinstance(target,torch.Tensor):
             target=torch.LongTensor([target])
         target=target.unsqueeze(0).expand(2,-1) # 2,1
-        policy_target=torch.stack([torch.zeros(self.policies_len).float(),policy_index],0) # 2, policy_len
-        target=torch.cat([target,policy_target],1) # 2,policy_len+1
         sample=torch.stack([
             sample,
             new_sample,
@@ -166,7 +163,7 @@ class PolicyDatasetC100(BaseDatasetWrapper):
 
             SubPolicy(0.5, 'translateY', 8),
             SubPolicy(0.5, 'shearX', 5),
-            SubPolicy(0.5, 'color', 3),
+            SubPolicy(0.5, 'brightness',3),
             SubPolicy(0.5, 'shearY', 0),
             SubPolicy(0.5, 'translateX', 1),
 
@@ -193,8 +190,6 @@ class PolicyDatasetC100(BaseDatasetWrapper):
         elif not isinstance(target,torch.Tensor):
             target=torch.LongTensor([target])
         target=target.unsqueeze(0).expand(2,-1) # 2,1
-        policy_target=torch.stack([torch.zeros(self.policies_len).float(),policy_index],0) # 2, policy_len
-        target=torch.cat([target,policy_target],1) # 2,policy_len+1
         sample=torch.stack([
             sample,
             new_sample,

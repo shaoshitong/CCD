@@ -29,10 +29,10 @@ parser.add_argument('--tcheckpoint', default='wrn_40_2.pth.tar', type=str, help=
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[150, 180, 210], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[38, 45, 53], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t', help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=60, help='number of epochs to train')
 parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
@@ -52,7 +52,7 @@ log_txt = 'result/' + str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
           'arch' + '_' + args.arch + '_' + \
           'dataset' + '_' + args.dataset + '_' + \
-          'rotation_kd' + '_1_4倍' + '.txt'
+          'rotation_kd' + '_1_1倍' + '.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_' + \
           'tarch' + '_' + args.tarch + '_' + \
@@ -196,13 +196,12 @@ def train(epoch, criterion_list, optimizer):
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
         optimizer.zero_grad()
         with torch.cuda.amp.autocast(enabled=True):
-            logits = net(input)
+            logits = net(input).float()
         with torch.no_grad():
             t_logits = tnet(input)
         loss_div = torch.tensor(0.).cuda()
         loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
         loss = loss_div
-
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()

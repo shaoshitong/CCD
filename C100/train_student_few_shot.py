@@ -4,7 +4,9 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 
-import os
+import os,sys
+print(os.getcwd())
+sys.path.append(os.path.join(os.getcwd()))
 import shutil
 import argparse
 import numpy as np
@@ -14,12 +16,14 @@ import models
 import torchvision
 import torchvision.transforms as transforms
 from utils import cal_param_size, cal_multi_adds
-
+from data.datasets import PolicyDatasetC10,PolicyDatasetC100
 
 from bisect import bisect_right
 import time
-import math
+import math,losses
 
+
+scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
@@ -91,6 +95,8 @@ labels = [trainset[i][1] for i in range(len(trainset))]
 ss = StratifiedShuffleSplit(n_splits=1, test_size=1-args.few_ratio, random_state=0)
 train_indices, valid_indices = list(ss.split(np.array(labels)[:, np.newaxis], labels))[0]
 trainset = torch.utils.data.Subset(trainset, train_indices)
+trainset = PolicyDatasetC100(trainset)
+
 
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
                                         transform=transforms.Compose([
@@ -179,6 +185,7 @@ def adjust_lr(optimizer, epoch, args, step=0, all_iters_per_epoch=0):
     return cur_lr
 
 
+
 def train(epoch, criterion_list, optimizer):
     train_loss = 0.
     train_loss_cls = 0.
@@ -203,148 +210,82 @@ def train(epoch, criterion_list, optimizer):
     for batch_idx, (input, target) in enumerate(trainloader):
         batch_start_time = time.time()
         input = input.float().cuda()
+        b,m,c,h,w= input.shape
+        input = input.view(-1,c,h,w)
         target = target.cuda()
-
-        size = input.shape[1:]
-        input = torch.stack([torch.rot90(input, k, (2, 3)) for k in range(4)], 1).view(-1, *size)
-        labels = torch.stack([target*4+i for i in range(4)], 1).view(-1)
+        target = target.view(-1)
 
         if epoch < args.warmup_epoch:
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
 
         optimizer.zero_grad()
-        logits, ss_logits = net(input, grad=True)
+        with torch.cuda.amp.autocast(enabled=True):
+            logits = net(input).float()
         with torch.no_grad():
-            t_logits, t_ss_logits = tnet(input)
-
-        loss_cls = torch.tensor(0.).cuda()
+            t_logits = tnet(input)
         loss_div = torch.tensor(0.).cuda()
-
-        loss_cls = loss_cls + criterion_cls(logits[0::4], target)
-        for i in range(len(ss_logits)):
-            loss_div = loss_div + criterion_div(ss_logits[i], t_ss_logits[i].detach())
-        
-        loss_div = loss_div + criterion_div(logits, t_logits.detach())
-        
-            
-        loss = loss_cls + loss_div
-        loss.backward()
-        optimizer.step()
-
-
+        loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
+        loss = loss_div
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         train_loss += loss.item() / len(trainloader)
-        train_loss_cls += loss_cls.item() / len(trainloader)
         train_loss_div += loss_div.item() / len(trainloader)
 
-        for i in range(len(ss_logits)):
-            top1, top5 = correct_num(ss_logits[i], labels, topk=(1, 5))
-            ss_top1_num[i] += top1
-            ss_top5_num[i] += top5
-        
-        class_logits = [torch.stack(torch.split(ss_logits[i], split_size_or_sections=4, dim=1), dim=1).sum(dim=2) for i in range(len(ss_logits))]
-        multi_target = target.view(-1, 1).repeat(1, 4).view(-1)
-        for i in range(len(class_logits)):
-            top1, top5 = correct_num(class_logits[i], multi_target, topk=(1, 5))
-            class_top1_num[i] += top1
-            class_top5_num[i] += top5
-
-        logits = logits.view(-1, 4, num_classes)[:, 0, :]
         top1, top5 = correct_num(logits, target, topk=(1, 5))
         top1_num += top1
         top5_num += top5
         total += target.size(0)
 
         print('Epoch:{}, batch_idx:{}/{}, lr:{:.5f}, Duration:{:.2f}, Top-1 Acc:{:.4f}'.format(
-            epoch, batch_idx, len(trainloader), lr, time.time()-batch_start_time, (top1_num/(total)).item()))
-
-
-    ss_acc1 = [round((ss_top1_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)]
-    ss_acc5 = [round((ss_top5_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)]
-    class_acc1 = [round((class_top1_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)] + [round((top1_num/(total)).item(), 4)]
-    class_acc5 = [round((class_top5_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)] + [round((top5_num/(total)).item(), 4)]
-    
-    print('Train epoch:{}\nTrain Top-1 ss_accuracy: {}\nTrain Top-1 class_accuracy: {}\n'.format(epoch, str(ss_acc1), str(class_acc1)))
-
+            epoch, batch_idx, len(trainloader), lr, time.time() - batch_start_time, (top1_num / (total)).item()))
     with open(log_txt, 'a+') as f:
         f.write('Epoch:{}\t lr:{:.5f}\t duration:{:.3f}'
-                '\n train_loss:{:.5f}\t train_loss_cls:{:.5f}\t train_loss_div:{:.5f}'
-                '\nTrain Top-1 ss_accuracy: {}\nTrain Top-1 class_accuracy: {}\n'
+                '\n train_loss:{:.5f}\t train_loss_div:{:.5f}'
                 .format(epoch, lr, time.time() - start_time,
-                        train_loss, train_loss_cls, train_loss_div,
-                        str(ss_acc1), str(class_acc1)))
+                        train_loss, train_loss_div))
 
 
 
 def test(epoch, criterion_cls, net):
     global best_acc
     test_loss_cls = 0.
-
-    ss_top1_num = [0] * (num_auxiliary_branches)
-    ss_top5_num = [0] * (num_auxiliary_branches)
-    class_top1_num = [0] * num_auxiliary_branches
-    class_top5_num = [0] * num_auxiliary_branches
     top1_num = 0
     top5_num = 0
     total = 0
-    
+
     net.eval()
     with torch.no_grad():
         for batch_idx, (inputs, target) in enumerate(testloader):
             batch_start_time = time.time()
             input, target = inputs.cuda(), target.cuda()
-
-            size = input.shape[1:]
-            input = torch.stack([torch.rot90(input, k, (2, 3)) for k in range(4)], 1).view(-1, *size)
-            labels = torch.stack([target*4+i for i in range(4)], 1).view(-1)
-            
-            logits, ss_logits = net(input)
+            logits = net(input)
             loss_cls = torch.tensor(0.).cuda()
-            loss_cls = loss_cls + criterion_cls(logits[0::4], target)
+            loss_cls = loss_cls + criterion_cls(logits, target)
 
-            test_loss_cls += loss_cls.item()/ len(testloader)
+            test_loss_cls += loss_cls.item() / len(testloader)
 
-            batch_size = logits.size(0) // 4
-            for i in range(len(ss_logits)):
-                top1, top5 = correct_num(ss_logits[i], labels, topk=(1, 5))
-                ss_top1_num[i] += top1
-                ss_top5_num[i] += top5
-                
-            class_logits = [torch.stack(torch.split(ss_logits[i], split_size_or_sections=4, dim=1), dim=1).sum(dim=2) for i in range(len(ss_logits))]
-            multi_target = target.view(-1, 1).repeat(1, 4).view(-1)
-            for i in range(len(class_logits)):
-                top1, top5 = correct_num(class_logits[i], multi_target, topk=(1, 5))
-                class_top1_num[i] += top1
-                class_top5_num[i] += top5
-
-            logits = logits.view(-1, 4, num_classes)[:, 0, :]
             top1, top5 = correct_num(logits, target, topk=(1, 5))
             top1_num += top1
             top5_num += top5
             total += target.size(0)
-            
 
             print('Epoch:{}, batch_idx:{}/{}, Duration:{:.2f}, Top-1 Acc:{:.4f}'.format(
-                epoch, batch_idx, len(testloader), time.time()-batch_start_time, (top1_num/(total)).item()))
-
-        ss_acc1 = [round((ss_top1_num[i]/(total*4)).item(), 4) for i in range(len(ss_logits))]
-        ss_acc5 = [round((ss_top5_num[i]/(total*4)).item(), 4) for i in range(len(ss_logits))]
-        class_acc1 = [round((class_top1_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)] + [round((top1_num/(total)).item(), 4)]
-        class_acc5 = [round((class_top5_num[i]/(total*4)).item(), 4) for i in range(num_auxiliary_branches)] + [round((top5_num/(total)).item(), 4)]
+                epoch, batch_idx, len(testloader), time.time() - batch_start_time, (top1_num / (total)).item()))
         with open(log_txt, 'a+') as f:
-            f.write('test epoch:{}\t test_loss_cls:{:.5f}\nTop-1 ss_accuracy: {}\nTop-1 class_accuracy: {}\n'
-                    .format(epoch, test_loss_cls, str(ss_acc1), str(class_acc1)))
-        print('test epoch:{}\nTest Top-1 ss_accuracy: {}\nTest Top-1 class_accuracy: {}\n'.format(epoch, str(ss_acc1), str(class_acc1)))
+            f.write('test epoch:{}\t test_loss_cls:{:.5f}\t test_acc:{:.5f}\n'
+                    .format(epoch, test_loss_cls ,(top1_num / (total)).item()))
 
-    return class_acc1[-1]
+    return round((top1_num/(total)).item(), 4)
 
 
 if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = DistillKL(args.kd_T)
+    criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
-    if args.evaluate: 
+    if args.evaluate:
         print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     
         checkpoint = torch.load(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar'),
                                 map_location=torch.device('cpu'))
