@@ -58,7 +58,7 @@ log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'few_ratio'+ '_' +  str(args.few_ratio) + '_2倍_2' +'.txt'
+          'few_ratio'+ '_' +  str(args.few_ratio) + 'wo_policy_2倍_2' +'.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -94,7 +94,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 labels = [trainset[i][1] for i in range(len(trainset))]
 ss = StratifiedShuffleSplit(n_splits=1, test_size=1-args.few_ratio, random_state=0)
 train_indices, valid_indices = list(ss.split(np.array(labels)[:, np.newaxis], labels))[0]
-trainset = PolicyDatasetC10(trainset)
+# trainset = PolicyDatasetC10(trainset)
 trainset = torch.utils.data.Subset(trainset, train_indices)
 print(max(train_indices),max(valid_indices),print(len(trainset)))
 
@@ -209,8 +209,9 @@ def train(epoch, criterion_list, optimizer):
     for batch_idx, (input, target) in enumerate(trainloader):
         batch_start_time = time.time()
         input = input.float().cuda()
-        b,m,c,h,w= input.shape
-        input = input.view(-1,c,h,w)
+        if input.ndim==5:
+            b,m,c,h,w= input.shape
+            input = input.view(-1,c,h,w)
         target = target.cuda()
         target = target.view(-1)
 
