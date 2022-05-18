@@ -55,7 +55,8 @@ class ProPadKD(nn.Module):
             else:
                 b1_indices = torch.arange(targets.shape[0]) % 2 == 0
                 b2_indices = torch.arange(targets.shape[0]) % 2 != 0
-
+                student_logits=torch.softmax(student_output[b2_indices],1)
+                
                 origin_soft_loss = self.kl_loss(torch.log_softmax(student_output[b1_indices] / self.temperature, dim=1),
                                             torch.softmax(teacher_output[b1_indices] / self.temperature, dim=1))
                 augment_soft_loss = self.kl_loss(torch.log_softmax(student_output[b2_indices] / self.temperature, dim=1),
@@ -66,4 +67,4 @@ class ProPadKD(nn.Module):
                 hard_loss = self.cross_entropy_loss(student_output, targets)
                 KDLoss=self.alpha * hard_loss + self.beta * (self.temperature ** 2) * soft_loss
                 return KDLoss
-                
+
