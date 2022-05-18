@@ -271,7 +271,7 @@ if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
+    criterion_div = losses.SinglePPKDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
     if args.evaluate:
         print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     
