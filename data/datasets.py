@@ -108,24 +108,26 @@ class SubPolicy:
 
 
 class PolicyDatasetC10(BaseDatasetWrapper):
-    def __init__(self,org_dataset):
+    def __init__(self,org_dataset,p=0.5):
         super(PolicyDatasetC10, self).__init__(org_dataset)
         self.transform=org_dataset.transform
+        print("the probability of CIFAR-100 is {}".format(p))
         org_dataset.transform=None
         self.policies = [
-            SubPolicy(0.5, 'invert', 7),
-            SubPolicy(0.5, 'rotate', 2),
-            SubPolicy(0.5, 'shearY', 8),
-            SubPolicy(0.5, 'autocontrast', 8),
-            SubPolicy(0.5, 'color', 3),
-            SubPolicy(0.5, 'sharpness', 9),
-            SubPolicy(0.5, 'equalize', 5),
-            SubPolicy(0.5, 'contrast', 7),
-            SubPolicy(0.5, 'translateY', 3),
-            SubPolicy(0.5, 'brightness',6),
-            SubPolicy(0.5, 'solarize', 2),
-            SubPolicy(0.5, 'translateX',3),
-            SubPolicy(0.5, 'shearX', 8),
+            SubPolicy(p, 'invert', 7),
+            SubPolicy(p, 'rotate', 2),
+            SubPolicy(p, 'shearY', 8),
+            SubPolicy(p, 'posterize', 9),
+            SubPolicy(p, 'autocontrast', 8),
+            SubPolicy(p, 'color', 3),
+            SubPolicy(p, 'sharpness', 9),
+            SubPolicy(p, 'equalize', 5),
+            SubPolicy(p, 'contrast', 7),
+            SubPolicy(p, 'translateY', 3),
+            SubPolicy(p, 'brightness',6),
+            SubPolicy(p, 'solarize', 2),
+            SubPolicy(p, 'translateX',3),
+            SubPolicy(p, 'shearX', 8),
         ]
         self.policies_len=len(self.policies)
 
@@ -149,32 +151,33 @@ class PolicyDatasetC10(BaseDatasetWrapper):
         ])
         return sample,target
 
-
 class PolicyDatasetC100(BaseDatasetWrapper):
-    def __init__(self,org_dataset):
+    def __init__(self,org_dataset,p=0.3):
         super(PolicyDatasetC100, self).__init__(org_dataset)
         self.transform=org_dataset.transform
         org_dataset.transform=None
+        print("the probability of CIFAR-100 is {}".format(p))
         self.policies = [
-            SubPolicy(0.5,'autocontrast', 2),
-            SubPolicy(0.5, 'contrast', 3),
-            SubPolicy(0.5,  'posterize', 0),
-            SubPolicy(0.5,  'solarize', 4),
+            SubPolicy(p,'autocontrast', 2),
+            SubPolicy(p, 'contrast', 3),
+            SubPolicy(p,  'posterize', 0),
+            SubPolicy(p,  'solarize', 4),
 
-            SubPolicy(0.5, 'translateY', 8),
-            SubPolicy(0.5, 'shearX', 5),
-            SubPolicy(0.5, 'brightness',3),
-            SubPolicy(0.5, 'shearY', 0),
-            SubPolicy(0.5, 'translateX', 1),
+            SubPolicy(p, 'translateY', 8),
+            SubPolicy(p, 'shearX', 5),
+            SubPolicy(p, 'brightness',3),
+            SubPolicy(p, 'shearY', 0),
+            SubPolicy(p, 'translateX', 1),
 
-            SubPolicy(0.5, 'sharpness', 5),
-            SubPolicy(0.5, 'invert', 4),
-            SubPolicy(0.5, 'color', 4),
-            SubPolicy(0.5, 'equalize', 8),
-            SubPolicy(0.5, 'rotate', 3),
+            SubPolicy(p, 'sharpness', 5),
+            SubPolicy(p, 'invert', 4),
+            SubPolicy(p, 'color', 4),
+            SubPolicy(p, 'equalize', 8),
+            SubPolicy(p, 'rotate', 3),
 
         ]
         self.policies_len=len(self.policies)
+
 
     def __getitem__(self, index):
         sample,target=super(PolicyDatasetC100, self).__getitem__(index)
@@ -198,58 +201,45 @@ class PolicyDatasetC100(BaseDatasetWrapper):
 
 
 
+class ContrastiveDataset(BaseDatasetWrapper):
+    def __init__(self, org_dataset, num_negative_samples, mode, ratio):
+        super().__init__(org_dataset)
+        self.num_negative_samples = num_negative_samples
+        self.mode = mode
+        num_classes = len(org_dataset.classes)
+        num_samples = len(org_dataset)
+        labels = org_dataset.targets
+        self.cls_positives = [[] for i in range(num_classes)]
+        for i in range(num_samples):
+            self.cls_positives[labels[i]].append(i)
 
+        self.cls_negatives = [[] for i in range(num_classes)]
+        for i in range(num_classes):
+            for j in range(num_classes):
+                if j == i:
+                    continue
+                self.cls_negatives[i].extend(self.cls_positives[j])
 
-def policy_classes_compute(hot):
-    l=hot.shape[0]
-    exp=torch.arange(0,l)
-    weight=2**exp
-    return (hot*weight).sum().long()
+        self.cls_positives = [np.asarray(self.cls_positives[i]) for i in range(num_classes)]
+        self.cls_negatives = [np.asarray(self.cls_negatives[i]) for i in range(num_classes)]
+        if 0 < ratio < 1:
+            n = int(len(self.cls_negatives[0]) * ratio)
+            self.cls_negatives = [np.random.permutation(self.cls_negatives[i])[0:n] for i in range(num_classes)]
 
-
-
-class ICPDataset(BaseDatasetWrapper):
-    def __init__(self,org_dataset):
-        super(ICPDataset, self).__init__(org_dataset)
-        self.transform=org_dataset.transform
-        org_dataset.transform=None
-        self.policies = [
-            SubPolicy(0.5, 'invert', 7),
-            SubPolicy(0.5, 'rotate', 2),
-            SubPolicy(0.5, 'sharpness', 1),
-            SubPolicy(0.5, 'shearY', 8),
-            SubPolicy(0.5, 'autocontrast', 8),
-            SubPolicy(0.5, 'color', 3),
-            SubPolicy(0.5, 'sharpness', 9),
-            SubPolicy(0.5, 'equalize', 5),
-            SubPolicy(0.5, 'contrast', 7),
-            SubPolicy(0.5, 'translateY', 3),
-            SubPolicy(0.5, 'brightness',6),
-            SubPolicy(0.5, 'solarize', 2),
-            SubPolicy(0.5, 'translateX',3),
-            SubPolicy(0.5, 'shearX', 8),
-        ]
-        self.policies_len=len(self.policies)
+        self.cls_positives = np.asarray(self.cls_positives)
+        self.cls_negatives = np.asarray(self.cls_negatives)
 
     def __getitem__(self, index):
-        sample,target,supp_dict=super(ICPDataset, self).__getitem__(index)
-        policy_index=torch.zeros(self.policies_len).float()
-        new_sample=sample
-        for i in range(self.policies_len):
-            new_sample,label=self.policies[i](new_sample)
-            policy_index[i]=label
-        new_sample=self.transform(new_sample).detach()
-        sample=self.transform(sample).detach()
-        if isinstance(target,torch.Tensor) and target.ndim==2 and target.shape[-1]!=1:
-            target=target.argmax(1)
-        elif not isinstance(target,torch.Tensor):
-            target=torch.LongTensor([target])
-        identity_target=torch.LongTensor([index]).unsqueeze(0).expand(2,-1)
-        classes_target=target.unsqueeze(0).expand(2,-1) # 2,1
-        policy_target = torch.stack([torch.zeros(self.policies_len).int(), policy_index.int()], 0)  # 2, policy_len
-        target=torch.cat([identity_target,classes_target,policy_target],1) # 2,3
-        sample=torch.stack([
-            sample,
-            new_sample,
-        ])
-        return sample,target,supp_dict
+        sample, target = super().__getitem__(index)
+        if self.mode == 'exact':
+            pos_idx = index
+        elif self.mode == 'relax':
+            pos_idx = np.random.choice(self.cls_positives[target], 1)
+            pos_idx = pos_idx[0]
+        else:
+            raise NotImplementedError(self.mode)
+
+        replace = True if self.num_negative_samples > len(self.cls_negatives[target]) else False
+        neg_idx = np.random.choice(self.cls_negatives[target], self.num_negative_samples, replace=replace)
+        contrast_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
+        return sample, target, index,contrast_idx

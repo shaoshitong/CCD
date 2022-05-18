@@ -1,5 +1,11 @@
-python C100/train_student_few_shot.py       --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --few-ratio 0.25
+python C100/train_student_augment.py    --arch wrn_40_1   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 1
 
-python C100/train_student_few_shot.py       --checkpoint-dir ./store/     --data D:/Product/data     --gpu 0  --few-ratio 0.5
+python C100/ttrain_student_augment.py   --arch wrn_40_1   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 2
 
-python C100/train_student_few_shot.py        --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --few-ratio 0.75
+python C100/train_student_augment.py    --arch wrn_40_1   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 3
+
+python C100/train_student_augment.py    --arch wrn_16_2   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 1
+
+python C100/ttrain_student_augment.py   --arch wrn_16_2   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 2
+
+python C100/train_student_augment.py    --arch wrn_16_2   --checkpoint-dir ./store/     --data D:/Product/data    --gpu 0  --i 3
