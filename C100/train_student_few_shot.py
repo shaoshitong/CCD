@@ -26,24 +26,27 @@ import math,losses
 scaler=torch.cuda.amp.GradScaler()
 
 
+
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2_aux', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='wrn_40_2_aux', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='wrn_40_2_aux.pth.tar', type=str, help='pre-trained weights of teacher')
-parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
-parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
+parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='C:/Users/aurora_A/.cache/torch/hub/checkpoints/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
 parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=64, help='batch size')
+parser.add_argument('--batch-size', type=int, default=128, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
-parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
+parser.add_argument('--kd-T', type=float, default=3, help='temperature for KD distillation')
+parser.add_argument('--kd-alpha', type=float, default=0.5, help='temperature for KD distillation')
+parser.add_argument('--kd-weight', type=float, default=2, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='network architecture')
@@ -57,8 +60,7 @@ log_txt = 'result/'+ str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
           'dataset' + '_' +  args.dataset + '_'+\
-          'few_ratio'+ '_' +  str(args.few_ratio) + '_'+\
-          'seed'+ str(args.manual_seed) +'.txt'
+          'few_ratio' +  str(args.few_ratio) +'_2倍_2' +'.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -94,8 +96,10 @@ from sklearn.model_selection import StratifiedShuffleSplit
 labels = [trainset[i][1] for i in range(len(trainset))]
 ss = StratifiedShuffleSplit(n_splits=1, test_size=1-args.few_ratio, random_state=0)
 train_indices, valid_indices = list(ss.split(np.array(labels)[:, np.newaxis], labels))[0]
-trainset = torch.utils.data.Subset(trainset, train_indices)
 trainset = PolicyDatasetC100(trainset)
+trainset = torch.utils.data.Subset(trainset, train_indices)
+print(max(train_indices),max(valid_indices),print(len(trainset)))
+
 
 
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
@@ -135,7 +139,7 @@ net =  torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
 tnet = tmodel(num_classes=num_classes).cuda()
-tnet.load_state_dict(checkpoint['net'])
+tnet.load_state_dict(checkpoint['state_dict'])
 tnet.eval()
 tnet =  torch.nn.DataParallel(tnet)
 
@@ -190,11 +194,6 @@ def train(epoch, criterion_list, optimizer):
     train_loss = 0.
     train_loss_cls = 0.
     train_loss_div = 0.
-
-    ss_top1_num = [0] * num_auxiliary_branches
-    ss_top5_num = [0] * num_auxiliary_branches
-    class_top1_num = [0] * num_auxiliary_branches
-    class_top5_num = [0] * num_auxiliary_branches
     top1_num = 0
     top5_num = 0
     total = 0
@@ -210,8 +209,9 @@ def train(epoch, criterion_list, optimizer):
     for batch_idx, (input, target) in enumerate(trainloader):
         batch_start_time = time.time()
         input = input.float().cuda()
-        b,m,c,h,w= input.shape
-        input = input.view(-1,c,h,w)
+        if input.ndim==5:
+            b,m,c,h,w= input.shape
+            input = input.view(-1,c,h,w)
         target = target.cuda()
         target = target.view(-1)
 
