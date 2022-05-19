@@ -2,9 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 class SinglePPKDLoss(nn.KLDivLoss):
-    """
-    "Distilling the Knowledge in a Neural Network"
-    """
     def __init__(self, temperature, alpha=None, beta=None, p=0.5,reduction='batchmean', **kwargs):
         super().__init__(reduction=reduction)
         self.temperature = temperature
@@ -13,18 +10,21 @@ class SinglePPKDLoss(nn.KLDivLoss):
         cel_reduction = 'mean' if reduction == 'batchmean' else reduction
         self.p=p
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction=cel_reduction, **kwargs)
+        self.kl_loss=nn.KLDivLoss(reduction="none")
+
+        self.momentum=0.99
 
     def forward(self, student_output, teacher_output, targets=None, *args, **kwargs):
         b1_indices = torch.arange(targets.shape[0]) % 2 == 0
         b2_indices = torch.arange(targets.shape[0]) % 2 != 0
-
         original_soft_loss = super().forward(torch.log_softmax(student_output[b1_indices] / self.temperature, dim=1),
                                     torch.softmax(teacher_output[b1_indices] / self.temperature, dim=1))
-        b1_max=torch.gather(teacher_output[b1_indices],1,targets[b1_indices].unsqueeze(-1))
-        b2_max=torch.gather(teacher_output[b2_indices],1,targets[b2_indices].unsqueeze(-1))
-        augment_student_output=torch.where(torch.abs(b1_max-b2_max)>self.p,student_output[b2_indices].clone().detach(),student_output[b2_indices])
-        augmented_soft_loss = super().forward(torch.log_softmax(augment_student_output / self.temperature, dim=1),
-                                    torch.softmax(augment_student_output / self.temperature, dim=1))
+        b1=teacher_output[b1_indices]
+        b2=teacher_output[b2_indices]
+        cosine=(b1*b2).sum(-1)/(b1.pow(2).sum(-1).sqrt()*b2.pow(2).sum(-1).sqrt())+1
+        augmented_soft_loss = self.kl_loss(torch.log_softmax(student_output[b2_indices] / self.temperature, dim=1),
+                                    torch.softmax(teacher_output[b2_indices] / self.temperature, dim=1))*cosine.unsqueeze(-1)
+        augmented_soft_loss = augmented_soft_loss.sum(-1).mean()
         soft_loss=(original_soft_loss+augmented_soft_loss)/2
         if self.alpha is None or self.alpha == 0 or targets is None:
             return soft_loss

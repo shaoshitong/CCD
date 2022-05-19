@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import os,sys
 print(os.getcwd())
 sys.path.append(os.path.join(os.getcwd()))
+
 import shutil
 import argparse
 import numpy as np
@@ -28,11 +29,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='C:/Users/aurora_A/.cache/torch/hub/checkpoints/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -44,7 +45,7 @@ parser.add_argument('--batch-size', type=int, default=128, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
-parser.add_argument('--kd-T', type=float, default=3, help='temperature for KD distillation')
+parser.add_argument('--kd-T', type=float, default=4, help='temperature for KD distillation')
 parser.add_argument('--kd-alpha', type=float, default=0.5, help='temperature for KD distillation')
 parser.add_argument('--kd-weight', type=float, default=2, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
@@ -58,7 +59,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 log_txt = 'result/'+ 'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
-          'dataset' + '_' +  args.dataset + '_'+f'_2倍_{args.i}' +'.txt'
+          'dataset' + '_' +  args.dataset + '_'+f'_2倍_{args.i}' +'_3.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -96,10 +97,10 @@ testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=Tr
                                             transforms.Normalize([0.5071, 0.4867, 0.4408],
                                                                 [0.2675, 0.2565, 0.2761]),
                                         ]))
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,num_workers=8,
                                     pin_memory=(torch.cuda.is_available()))
 
-testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,num_workers=4,
                                     pin_memory=(torch.cuda.is_available()))
 
 
