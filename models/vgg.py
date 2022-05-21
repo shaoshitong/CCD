@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import math
 
 
-__all__ = ['vgg13_bn_aux']
+__all__ = ['vgg13_bn_aux','vgg13_bn','vgg13_bn_spkd']
 
 
 model_urls = {
@@ -233,7 +233,42 @@ class VGG_Auxiliary(nn.Module):
         ss_logits = self.auxiliary_classifier(feats)
         return logit, ss_logits
 
+class VGG_SPKD(VGG):
+    def __init__(self, cfg, batch_norm=False, num_classes=1000):
+        super(VGG_SPKD, self).__init__(cfg,batch_norm,num_classes)
 
+    def forward(self, x):
+        h = x.shape[2]
+        x = F.relu(self.block0(x))
+        f0 = x
+
+        x = self.pool0(x)
+        x = self.block1(x)
+        f1_pre = x
+        x = F.relu(x)
+        f1 = x
+
+        x = self.pool1(x)
+        x = self.block2(x)
+        f2_pre = x
+        x = F.relu(x)
+        f2 = x
+
+        x = self.pool2(x)
+        x = self.block3(x)
+        f3_pre = x
+        x = F.relu(x)
+        if h == 64:
+            x = self.pool3(x)
+        x = self.block4(x)
+        f4_pre = x
+        x = F.relu(x)
+        f3 = x
+
+        x = self.pool4(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return f3,x
 cfg = {
     'A': [[64], [128], [256, 256], [512, 512], [512, 512]],
     'B': [[64, 64], [128, 128], [256, 256], [512, 512], [512, 512]],
@@ -241,6 +276,8 @@ cfg = {
     'E': [[64, 64], [128, 128], [256, 256, 256, 256], [512, 512, 512, 512], [512, 512, 512, 512]],
     'S': [[64], [128], [256], [512], [512]],
 }
+
+
 
 
 def vgg8(**kwargs):
@@ -261,12 +298,22 @@ def vgg8_bn(**kwargs):
     return model
 
 
+
 def vgg8_bn_aux(**kwargs):
     """VGG 8-layer model (configuration "S")
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = VGG_Auxiliary(cfg['S'], batch_norm=True, **kwargs)
+    return model
+
+
+def vgg8_bn_spkd(**kwargs):
+    """VGG 8-layer model (configuration "S")
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = VGG_SPKD(cfg['S'], batch_norm=True, **kwargs)
     return model
 
 
@@ -304,6 +351,11 @@ def vgg13_bn_aux(**kwargs):
     model = VGG_Auxiliary(cfg['B'], batch_norm=True, **kwargs)
     return model
 
+
+def vgg13_bn_spkd(**kwargs):
+    """VGG 13-layer model (configuration "B") with batch normalization"""
+    model = VGG_SPKD(cfg['B'], batch_norm=True, **kwargs)
+    return model
 
 def vgg16(**kwargs):
     """VGG 16-layer model (configuration "D")

@@ -7,12 +7,11 @@ class SPKDLoss(nn.Module):
     """
     "Similarity-Preserving Knowledge Distillation"
     """
-    def __init__(self, student_output_path, teacher_output_path, reduction, **kwargs):
+    def __init__(self, reduction, **kwargs):
         super().__init__()
-        self.student_output_path = student_output_path
-        self.teacher_output_path = teacher_output_path
         self.reduction = reduction
         self.kl_loss=nn.KLDivLoss(reduction=reduction)
+        self.cross_entropy_loss=nn.CrossEntropyLoss()
 
     def matmul_and_normalize(self, z):
         z = torch.flatten(z, 1)
@@ -30,7 +29,7 @@ class SPKDLoss(nn.Module):
         spkd_losses = self.compute_spkd_loss(teacher_outputs, student_outputs)
         spkd_loss = spkd_losses.sum()
         spkd_loss=spkd_loss / (batch_size ** 2) if self.reduction == 'batchmean' else spkd_loss
-        soft_loss = self.kl_loss(torch.log_softmax(student_output / self.temperature, dim=1),
-                                    torch.softmax(teacher_output / self.temperature, dim=1))
+        # soft_loss = self.kl_loss(torch.log_softmax(student_output / self.temperature, dim=1),
+        #                             torch.softmax(teacher_output / self.temperature, dim=1))
         hard_loss = self.cross_entropy_loss(student_output, targets)
-        return  hard_loss + (self.temperature ** 2) * soft_loss+spkd_loss
+        return  hard_loss + spkd_loss

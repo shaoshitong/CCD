@@ -8,7 +8,7 @@ Original Author: Wei Yang
 """
 
 __all__ = ['wrn', 'wrn_40_2_aux', 'wrn_16_2_aux', 'wrn_16_1', 'wrn_16_2', 'wrn_40_1', 'wrn_40_2',
-             'wrn_40_1_aux']
+             'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd']
 
 
 class BasicBlock(nn.Module):
@@ -187,6 +187,24 @@ class WideResNet_Auxiliary(nn.Module):
 
         return logit, ss_logits
 
+class WideResNet_SPKD(WideResNet):
+    def __init__(self, depth, num_classes, widen_factor=1, dropRate=0.0):
+        super(WideResNet_SPKD, self).__init__(depth,num_classes,widen_factor,dropRate)
+    def forward(self, x, is_feat=False, preact=False):
+        out = self.conv1(x)
+        f0 = out
+        out = self.block1(out)
+        f1 = out
+        out = self.block2(out)
+        f2 = out
+        out = self.block3(out)
+        f3 = out
+        out = self.relu(self.bn1(out))
+        out = F.avg_pool2d(out, 8)
+        out = out.view(-1, self.nChannels)
+        f4 = out
+        out = self.fc(out)
+        return f4,out
 
 def wrn(**kwargs):
     """
@@ -204,6 +222,10 @@ def wrn_40_2_aux(**kwargs):
     model = WideResNet_Auxiliary(depth=40, widen_factor=2, **kwargs)
     return model
 
+def wrn_40_2_spkd(**kwargs):
+    model = WideResNet_SPKD(depth=40, widen_factor=2, **kwargs)
+    return model
+
 
 def wrn_40_1(**kwargs):
     model = WideResNet(depth=40, widen_factor=1, **kwargs)
@@ -213,12 +235,20 @@ def wrn_40_1_aux(**kwargs):
     model = WideResNet_Auxiliary(depth=40, widen_factor=1, **kwargs)
     return model
 
+def wrn_40_1_spkd(**kwargs):
+    model = WideResNet_SPKD(depth=40, widen_factor=1, **kwargs)
+    return model
+
 def wrn_16_2(**kwargs):
     model = WideResNet(depth=16, widen_factor=2, **kwargs)
     return model
 
 def wrn_16_2_aux(**kwargs):
     model = WideResNet_Auxiliary(depth=16, widen_factor=2, **kwargs)
+    return model
+
+def wrn_16_2_spkd(**kwargs):
+    model = WideResNet_SPKD(depth=16, widen_factor=2, **kwargs)
     return model
 
 

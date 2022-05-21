@@ -12,7 +12,8 @@ import torch.nn.functional as F
 import math
 
 
-__all__ = ['resnet56_aux', 'resnet20_aux', 'resnet32x4_aux', 'resnet8x4_aux', 'resnet8', 'resnet8x4', 'resnet20','resnet56']
+__all__ = ['resnet56_aux', 'resnet20_aux', 'resnet32x4_aux', 'resnet8x4_aux', 'resnet8', 'resnet8x4', 'resnet20','resnet56',
+           'resnet8_spkd','resnet20_spkd','resnet56_spkd','resnet8x4_spkd','resnet32x4_spkd']
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -280,6 +281,22 @@ class ResNet_Auxiliary(nn.Module):
         else:
             return logit, ss_logits, feats
 
+class ResNet_SPKD(ResNet):
+    def __init__(self, depth, num_filters, block_name='BasicBlock', num_classes=10):
+        super(ResNet_SPKD, self).__init__(depth,num_filters,block_name,num_classes)
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)  # 32x32
+        x = self.layer1(x)  # 32x32
+        x = self.layer2(x)  # 16x16
+        x = self.layer3(x)  # 8x8
+        f3 = x
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return f3,x
+
 
 def resnet8(**kwargs):
     return ResNet(8, [16, 16, 32, 64], 'basicblock', **kwargs)
@@ -290,6 +307,17 @@ def resnet14(**kwargs):
 
 def resnet20(**kwargs):
     return ResNet(20, [16, 16, 32, 64], 'basicblock', **kwargs)
+
+def resnet8_spkd(**kwargs):
+    return ResNet_SPKD(8, [16, 16, 32, 64], 'basicblock', **kwargs)
+
+
+def resnet14_spkd(**kwargs):
+    return ResNet_SPKD(14, [16, 16, 32, 64], 'basicblock', **kwargs)
+
+def resnet20_spkd(**kwargs):
+    return ResNet_SPKD(20, [16, 16, 32, 64], 'basicblock', **kwargs)
+
 
 def resnet20_aux(**kwargs):
     return ResNet_Auxiliary(20, [16, 16, 32, 64], 'basicblock', **kwargs)
@@ -320,9 +348,11 @@ def resnet56(**kwargs):
 def resnet56_aux(**kwargs):
     return ResNet_Auxiliary(56, [16, 16, 32, 64], 'basicblock', **kwargs)
 
+def resnet56_spkd(**kwargs):
+    return ResNet_SPKD(56, [16, 16, 32, 64], 'basicblock', **kwargs)
+
 def resnet110(**kwargs):
     return ResNet(110, [16, 16, 32, 64], 'basicblock', **kwargs)
-
 
 def resnet8x4(**kwargs):
     return ResNet(8, [32, 64, 128, 256], 'basicblock', **kwargs)
@@ -330,12 +360,17 @@ def resnet8x4(**kwargs):
 def resnet8x4_aux(**kwargs):
     return ResNet_Auxiliary(8, [32, 64, 128, 256], 'basicblock', **kwargs)
 
+def resnet8x4_spkd(**kwargs):
+    return ResNet_SPKD(8, [32, 64, 128, 256], 'basicblock', **kwargs)
+
 def resnet32x4(**kwargs):
     return ResNet(32, [32, 64, 128, 256], 'basicblock', **kwargs)
 
-
 def resnet32x4_aux(**kwargs):
     return ResNet_Auxiliary(32, [32, 64, 128, 256], 'basicblock', **kwargs)
+
+def resnet32x4_spkd(**kwargs):
+    return ResNet_SPKD(32, [32, 64, 128, 256], 'basicblock', **kwargs)
 
 
 if __name__ == '__main__':

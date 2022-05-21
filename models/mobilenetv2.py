@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import math
 
-__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux']
+__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux','mobilenetV2_spkd']
 
 BN = None
 
@@ -303,6 +303,38 @@ class MobileNetv2_Auxiliary(nn.Module):
         else:
             return logit, ss_logits, feats
 
+class MobileNetV2_SPKD(MobileNetV2):
+    def __init__(self, T,
+                 feature_dim,
+                 input_size=32,
+                 width_mult=1.,
+                 remove_avg=False):
+        super(MobileNetV2_SPKD, self).__init__(
+            T,
+            feature_dim,
+            input_size,
+            width_mult,
+            remove_avg
+        )
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.blocks[0](out)
+        out = self.blocks[1](out)
+        out = self.blocks[2](out)
+        out = self.blocks[3](out)
+        out = self.blocks[4](out)
+        out = self.blocks[5](out)
+        out = self.blocks[6](out)
+        f4 = out
+
+        out = self.conv2(out)
+
+        if not self.remove_avg:
+            out = self.avgpool(out)
+        out = out.view(out.size(0), -1)
+        out = self.classifier(out)
+        return f4,out
+
 
 def mobilenetv2_T_w(T, W, feature_dim=100):
     model = MobileNetV2(T=T, feature_dim=feature_dim, width_mult=W)
@@ -314,6 +346,9 @@ def mobilenetV2(num_classes):
 
 def mobilenetV2_aux(num_classes):
     return MobileNetv2_Auxiliary(6, 0.5, num_classes)
+
+def mobilenetV2_spkd(num_classes):
+    return MobileNetV2_SPKD(6,0.5,num_classes)
 
 
 if __name__ == '__main__':
