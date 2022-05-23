@@ -34,9 +34,9 @@ scaler=torch.cuda.amp.GradScaler()
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2_spkd', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='wrn_40_2_spkd', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='resnet8x4_spkd', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='resnet32x4_spkd', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='./checkpoints/resnet32x4.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -63,7 +63,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 log_txt = 'result/'+ 'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
-          'dataset' + '_' +  args.dataset + '_'+f'_spkd_{args.i}' +'_4.txt'
+          'dataset' + '_' +  args.dataset + '_'+f'_spkd_{args.i}' +'.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
