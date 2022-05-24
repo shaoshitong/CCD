@@ -266,6 +266,8 @@ class ContrastiveDataset(BaseDatasetWrapper):
 
     def __getitem__(self, index):
         sample, target = super().__getitem__(index)
+        if isinstance(target,int):
+            target=[target]*2
         if self.mode == 'exact':
             pos_idx = index
         elif self.mode == 'relax':
@@ -277,9 +279,9 @@ class ContrastiveDataset(BaseDatasetWrapper):
         replace = True if self.num_negative_samples > len(self.cls_negatives[target[0]]) else False
         neg_idx = np.random.choice(self.cls_negatives[target[0]], self.num_negative_samples, replace=replace)
         contrast_idx = np.hstack((np.asarray([pos_idx]), neg_idx))
-
         index = torch.LongTensor([index])
         index = index.unsqueeze(0).expand(2, -1)  # 2,1
-
         contrast_idx=np.tile(contrast_idx[None,...],(2,1))
+        if isinstance(target,list):
+            target=target[0]
         return sample, target, index, contrast_idx

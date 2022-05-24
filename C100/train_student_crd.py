@@ -39,11 +39,11 @@ parser.add_argument('--tcheckpoint', default='C:/Users/Administrator/.cache/torc
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[300,360,420], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=128, help='batch size')
+parser.add_argument('--epochs', type=int, default=480, help='number of epochs to train')
+parser.add_argument('--batch-size', type=int, default=200, help='batch size')
 parser.add_argument('--num-workers', type=int, default=2, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
@@ -92,7 +92,7 @@ trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=Tr
                                             transforms.Normalize([0.5071, 0.4867, 0.4408],
                                                                 [0.2675, 0.2565, 0.2761])
                                         ]))
-trainset = PolicyDatasetC100(trainset)
+# trainset = PolicyDatasetC100(trainset)
 trainset = ContrastiveDataset(trainset,16384,'exact',1.0,num_classes=num_classes)
 
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
