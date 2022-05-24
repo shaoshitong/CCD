@@ -20,7 +20,7 @@ import models
 import torchvision
 import torchvision.transforms as transforms
 from utils import cal_param_size, cal_multi_adds
-from data.datasets import PolicyDatasetC10,PolicyDatasetC100
+from data.datasets import PolicyDatasetC10,PolicyDatasetC100,ContrastiveDataset
 
 from bisect import bisect_right
 import time
@@ -30,13 +30,12 @@ import math,losses
 scaler=torch.cuda.amp.GradScaler()
 
 
-
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='resnet8x4_spkd', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='resnet32x4_spkd', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='./checkpoints/resnet32x4.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='resnet8x4_crd', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='resnet32x4_crd', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/resnet32x4.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -50,7 +49,6 @@ parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd-T', type=float, default=4, help='temperature for KD distillation')
 parser.add_argument('--kd-alpha', type=float, default=0.5, help='temperature for KD distillation')
-parser.add_argument('--kd-weight', type=float, default=1, help='temperature for KD distillation')
 parser.add_argument('--jda', type=bool, default=True, help='if use data augmentation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
@@ -95,6 +93,8 @@ trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=Tr
                                                                 [0.2675, 0.2565, 0.2761])
                                         ]))
 trainset = PolicyDatasetC100(trainset)
+trainset = ContrastiveDataset(trainset,16384,'exact',1.0,num_classes=num_classes)
+
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
                                         transform=transforms.Compose([
                                             transforms.ToTensor(),
@@ -132,7 +132,7 @@ net =  torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
 tnet = tmodel(num_classes=num_classes).cuda()
-tnet.load_state_dict(checkpoint['state_dict'])
+tnet.load_state_dict(checkpoint['state_dict'],strict=False)
 tnet.eval()
 tnet =  torch.nn.DataParallel(tnet)
 
@@ -199,26 +199,29 @@ def train(epoch, criterion_list, optimizer):
     criterion_div = criterion_list[1]
 
     net.train()
-    for batch_idx, (input, target) in enumerate(trainloader):
+    for batch_idx, (input, target, pos_idx,contrast_idx) in enumerate(trainloader):
         batch_start_time = time.time()
         input = input.float().cuda()
         if input.ndim==5:
             b,m,c,h,w= input.shape
             input = input.view(-1,c,h,w)
-        target = target.cuda()
-        target = target.view(-1)
+            target = target.view(-1)
+            pos_idx=pos_idx.view(-1)
+            b,m,n=contrast_idx.shape
+            contrast_idx=contrast_idx.view(-1,n)
 
+        target = target.cuda()
         if epoch < args.warmup_epoch:
             lr = adjust_lr(optimizer, epoch, args, batch_idx, len(trainloader))
 
         optimizer.zero_grad()
         with torch.cuda.amp.autocast(enabled=True):
-            sf4,logits = net(input)
-            sf4,logits = sf4.float(),logits.float()
+            crd_s_out,logits = net(input)
+            crd_s_out,logits = crd_s_out.float(),logits.float()
         with torch.no_grad():
-            tf4,t_logits = tnet(input)
+            crd_t_out,t_logits = tnet(input)
         loss_div = torch.tensor(0.).cuda()
-        loss_div = loss_div + criterion_div(sf4,tf4,logits,t_logits,target)*args.kd_weight
+        loss_div = loss_div + criterion_div(crd_s_out,crd_t_out,pos_idx,contrast_idx,logits,t_logits,target)
         loss = loss_div
         scaler.scale(loss).backward()
         scaler.step(optimizer)
@@ -277,7 +280,14 @@ if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.SPKDLoss("batchmean")
+    criterion_div = losses.CRDLoss(
+        input_size=128,
+        output_size=50000,
+        num_negative_samples=16384,
+        num_samples=50000,
+        temperature= 0.07,
+        momentum= 0.5,
+        eps=0.0000001,)
 
     if args.evaluate:
         print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     

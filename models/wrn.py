@@ -8,7 +8,8 @@ Original Author: Wei Yang
 """
 
 __all__ = ['wrn', 'wrn_40_2_aux', 'wrn_16_2_aux', 'wrn_16_1', 'wrn_16_2', 'wrn_40_1', 'wrn_40_2',
-             'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd']
+             'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd','wrn_40_1_crd','wrn_16_2_crd',
+           'wrn_40_2_crd']
 
 
 class Normalizer4CRD(nn.Module):
@@ -18,6 +19,7 @@ class Normalizer4CRD(nn.Module):
         self.power = power
 
     def forward(self, x):
+        x = x.flatten(1)
         z = self.linear(x)
         norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
         out = z.div(norm)
@@ -218,6 +220,69 @@ class WideResNet_SPKD(WideResNet):
         out = self.fc(out)
         return f4,out
 
+class WideResNet_CRD(nn.Module):
+    def __init__(self, depth, num_classes, widen_factor=1, dropRate=0.0):
+        super(WideResNet_CRD, self).__init__()
+        nChannels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
+        assert (depth - 4) % 6 == 0, 'depth should be 6n+4'
+        n = (depth - 4) // 6
+        block = BasicBlock
+        # 1st conv before any network block
+        self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1,
+                               padding=1, bias=False)
+        # 1st block
+        self.block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
+        # 2nd block
+        self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate)
+        # 3rd block
+        self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
+        # global average pooling and classifier
+        self.bn1 = nn.BatchNorm2d(nChannels[3])
+        self.relu = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(nChannels[3], num_classes)
+        linear = nn.Linear(nChannels[3],128,bias=True)
+        self.normalizer = Normalizer4CRD(linear, power=2)
+        self.nChannels = nChannels[3]
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.bias.data.zero_()
+
+    def get_feat_modules(self):
+        feat_m = nn.ModuleList([])
+        feat_m.append(self.conv1)
+        feat_m.append(self.block1)
+        feat_m.append(self.block2)
+        feat_m.append(self.block3)
+        return feat_m
+
+    def get_bn_before_relu(self):
+        bn1 = self.block2.layer[0].bn1
+        bn2 = self.block3.layer[0].bn1
+        bn3 = self.bn1
+
+        return [bn1, bn2, bn3]
+
+    def forward(self, x, is_feat=False, preact=False):
+        out = self.conv1(x)
+        out = self.block1(out)
+        out = self.block2(out)
+        out = self.block3(out)
+        out = self.relu(self.bn1(out))
+        out = F.avg_pool2d(out, 8)
+        crdout=out
+        out = out.view(-1, self.nChannels)
+        out = self.fc(out)
+        crdout=self.normalizer(crdout)
+        return crdout,out
+
+
 def wrn(**kwargs):
     """
     Constructs a Wide Residual Networks.
@@ -238,6 +303,10 @@ def wrn_40_2_spkd(**kwargs):
     model = WideResNet_SPKD(depth=40, widen_factor=2, **kwargs)
     return model
 
+def wrn_40_2_crd(**kwargs):
+    model = WideResNet_CRD(depth=40, widen_factor=2, **kwargs)
+    return model
+
 
 def wrn_40_1(**kwargs):
     model = WideResNet(depth=40, widen_factor=1, **kwargs)
@@ -251,6 +320,11 @@ def wrn_40_1_spkd(**kwargs):
     model = WideResNet_SPKD(depth=40, widen_factor=1, **kwargs)
     return model
 
+def wrn_40_1_crd(**kwargs):
+    model = WideResNet_CRD(depth=40, widen_factor=1, **kwargs)
+    return model
+
+
 def wrn_16_2(**kwargs):
     model = WideResNet(depth=16, widen_factor=2, **kwargs)
     return model
@@ -263,6 +337,9 @@ def wrn_16_2_spkd(**kwargs):
     model = WideResNet_SPKD(depth=16, widen_factor=2, **kwargs)
     return model
 
+def wrn_16_2_crd(**kwargs):
+    model = WideResNet_CRD(depth=16, widen_factor=2, **kwargs)
+    return model
 
 def wrn_16_1(**kwargs):
     model = WideResNet(depth=16, widen_factor=1, **kwargs)

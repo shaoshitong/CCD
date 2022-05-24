@@ -19,6 +19,7 @@ class Normalizer4CRD(nn.Module):
         self.power = power
 
     def forward(self, x):
+        x = x.flatten(1)
         z = self.linear(x)
         norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
         out = z.div(norm)

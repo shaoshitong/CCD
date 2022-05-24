@@ -11,18 +11,6 @@ import torch.nn.functional as F
 __all__ = ['ResNet50_aux']
 
 
-class Normalizer4CRD(nn.Module):
-    def __init__(self, linear, power=2):
-        super().__init__()
-        self.linear = linear
-        self.power = power
-
-    def forward(self, x):
-        z = self.linear(x)
-        norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
-        out = z.div(norm)
-        return out
-
 class BasicBlock(nn.Module):
     expansion = 1
 

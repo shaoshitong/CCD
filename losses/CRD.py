@@ -55,6 +55,8 @@ class CRDLoss(nn.Module):
         stdv = 1.0 / math.sqrt(input_size / 3)
         self.register_buffer('memory_v1', torch.rand(output_size, input_size).mul_(2 * stdv).add_(-stdv))
         self.register_buffer('memory_v2', torch.rand(output_size, input_size).mul_(2 * stdv).add_(-stdv))
+        self.kl_loss=nn.KLDivLoss(reduction="batchmean")
+        self.cross_entropy_loss=nn.CrossEntropyLoss(reduction="mean")
         self.probs, self.alias = None, None
         self.init_prob_alias(self.unigrams)
 
@@ -144,7 +146,7 @@ class CRDLoss(nn.Module):
         loss = - (log_d1.sum(0) + log_d0.view(-1, 1).sum(0)) / batch_size
         return loss
 
-    def forward(self, nornamize_s_out,normalize_t_out,pos_idx,contrast_idx,linear_s_out,linear_t_out, *args, **kwargs):
+    def forward(self, nornamize_s_out,normalize_t_out,pos_idx,contrast_idx,linear_s_out,linear_t_out,targets, *args, **kwargs):
         """
         pos_idx: the indices of these positive samples in the dataset, size [batch_size]
         contrast_idx: the indices of negative samples, size [batch_size, nce_k]
@@ -160,5 +162,9 @@ class CRDLoss(nn.Module):
         out_s, out_t = self.contrast_memory(nornamize_s_out, normalize_t_out, pos_idx, contrast_idx)
         student_contrast_loss = self.compute_contrast_loss(out_s)
         teacher_contrast_loss = self.compute_contrast_loss(out_t)
-        loss = student_contrast_loss + teacher_contrast_loss
-        return loss
+        crd_loss = student_contrast_loss + teacher_contrast_loss
+        soft_loss = self.kl_loss(torch.log_softmax(linear_s_out / 4, dim=1),
+                                    torch.softmax(linear_t_out / 4, dim=1))
+        hard_loss = self.cross_entropy_loss(linear_s_out, targets)
+        vanilla_kd_loss=hard_loss + (4** 2) * soft_loss
+        return vanilla_kd_loss*1.0+crd_loss*0.8
