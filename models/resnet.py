@@ -13,8 +13,21 @@ import math
 
 
 __all__ = ['resnet56_aux', 'resnet20_aux', 'resnet32x4_aux', 'resnet8x4_aux', 'resnet8', 'resnet8x4', 'resnet20','resnet56',
-           'resnet8_spkd','resnet20_spkd','resnet56_spkd','resnet8x4_spkd','resnet32x4_spkd']
+           'resnet8_spkd','resnet20_spkd','resnet56_spkd','resnet8x4_spkd','resnet32x4_spkd','resnet32x4']
 
+
+
+class Normalizer4CRD(nn.Module):
+    def __init__(self, linear, power=2):
+        super().__init__()
+        self.linear = linear
+        self.power = power
+
+    def forward(self, x):
+        z = self.linear(x)
+        norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
+        out = z.div(norm)
+        return out
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""

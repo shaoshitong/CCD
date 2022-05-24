@@ -5,13 +5,17 @@ import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 
 import os,sys
+if os.getcwd().split("/")[-1]=="C100":
+    os.chdir("../")
+    sys.path.append(os.getcwd())
+else:
+    sys.path.append(os.getcwd())
 print(os.getcwd())
-sys.path.append(os.path.join(os.getcwd()))
+
+
 import shutil
 import argparse
 import numpy as np
-
-
 import models
 import torchvision
 import torchvision.transforms as transforms
@@ -28,11 +32,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='C:/Users/aurora_A/.cache/torch/hub/checkpoints/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='resnet8x4_spkd', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='resnet32x4_spkd', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='./checkpoints/resnet32x4.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -41,12 +45,13 @@ parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR 
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
 parser.add_argument('--batch-size', type=int, default=128, help='batch size')
-parser.add_argument('--num-workers', type=int, default=8, help='the number of workers')
+parser.add_argument('--num-workers', type=int, default=4, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
-parser.add_argument('--kd-T', type=float, default=3, help='temperature for KD distillation')
+parser.add_argument('--kd-T', type=float, default=4, help='temperature for KD distillation')
 parser.add_argument('--kd-alpha', type=float, default=0.5, help='temperature for KD distillation')
-parser.add_argument('--kd-weight', type=float, default=2, help='temperature for KD distillation')
+parser.add_argument('--kd-weight', type=float, default=1, help='temperature for KD distillation')
+parser.add_argument('--jda', type=bool, default=True, help='if use data augmentation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='network architecture')
@@ -58,7 +63,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 log_txt = 'result/'+ 'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
-          'dataset' + '_' +  args.dataset + '_'+f'_2倍_{args.i}' +'.txt'
+          'dataset' + '_' +  args.dataset + '_'+f'_spkd_{args.i}' +'.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
@@ -96,10 +101,10 @@ testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=Tr
                                             transforms.Normalize([0.5071, 0.4867, 0.4408],
                                                                 [0.2675, 0.2565, 0.2761]),
                                         ]))
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,num_workers=args.num_workers,
                                     pin_memory=(torch.cuda.is_available()))
 
-testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,num_workers=4,
                                     pin_memory=(torch.cuda.is_available()))
 
 
@@ -208,11 +213,12 @@ def train(epoch, criterion_list, optimizer):
 
         optimizer.zero_grad()
         with torch.cuda.amp.autocast(enabled=True):
-            logits = net(input).float()
+            sf4,logits = net(input)
+            sf4,logits = sf4.float(),logits.float()
         with torch.no_grad():
-            t_logits = tnet(input)
+            tf4,t_logits = tnet(input)
         loss_div = torch.tensor(0.).cuda()
-        loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
+        loss_div = loss_div + criterion_div(sf4,tf4,logits,t_logits,target)*args.kd_weight
         loss = loss_div
         scaler.scale(loss).backward()
         scaler.step(optimizer)
@@ -247,7 +253,7 @@ def test(epoch, criterion_cls, net):
         for batch_idx, (inputs, target) in enumerate(testloader):
             batch_start_time = time.time()
             input, target = inputs.cuda(), target.cuda()
-            logits = net(input)
+            sf4,logits = net(input)
             loss_cls = torch.tensor(0.).cuda()
             loss_cls = loss_cls + criterion_cls(logits, target)
 
@@ -271,7 +277,7 @@ if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
+    criterion_div = losses.SPKDLoss("batchmean")
 
     if args.evaluate:
         print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     

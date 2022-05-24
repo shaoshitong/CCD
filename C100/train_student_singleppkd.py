@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import os,sys
 print(os.getcwd())
 sys.path.append(os.path.join(os.getcwd()))
+sys.path.append(os.path.join(os.getcwd(),"../"))
 
 import shutil
 import argparse
@@ -31,9 +32,9 @@ scaler=torch.cuda.amp.GradScaler()
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='mobilenetV2', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='vgg13_bn', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/vgg13_bn.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -119,7 +120,7 @@ print('Student Arch: %s, Params: %.2fM, Multi-adds: %.2fG'
 del(net)
 
 
-print('load pre-trained teacher weights from: {}'.format(args.tcheckpoint))     
+print('load pre-trained teacher weights from: {}'.format(args.tcheckpoint))
 checkpoint = torch.load(args.tcheckpoint, map_location=torch.device('cpu'))
 
 model = getattr(models, args.arch)
@@ -275,7 +276,7 @@ if __name__ == '__main__':
     criterion_div = losses.SinglePPKDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
     if args.evaluate:
-        print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     
+        print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))
         checkpoint = torch.load(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar'),
                                 map_location=torch.device('cpu'))
         net.module.load_state_dict(checkpoint['net'])

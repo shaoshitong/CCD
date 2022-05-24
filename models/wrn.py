@@ -11,6 +11,18 @@ __all__ = ['wrn', 'wrn_40_2_aux', 'wrn_16_2_aux', 'wrn_16_1', 'wrn_16_2', 'wrn_4
              'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd']
 
 
+class Normalizer4CRD(nn.Module):
+    def __init__(self, linear, power=2):
+        super().__init__()
+        self.linear = linear
+        self.power = power
+
+    def forward(self, x):
+        z = self.linear(x)
+        norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
+        out = z.div(norm)
+        return out
+
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
         super(BasicBlock, self).__init__()

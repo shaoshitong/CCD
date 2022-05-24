@@ -45,12 +45,8 @@ class CRDLoss(nn.Module):
         for last_one in smaller + larger:
             self.probs[last_one] = 1
 
-    def __init__(self, student_norm_module_path, student_empty_module_path, teacher_norm_module_path,
-                 input_size, output_size, num_negative_samples, num_samples, temperature=0.07, momentum=0.5, eps=1e-7):
+    def __init__(self, input_size, output_size, num_negative_samples, num_samples, temperature=0.07, momentum=0.5, eps=1e-7):
         super().__init__()
-        self.student_norm_module_path = student_norm_module_path
-        self.student_empty_module_path = student_empty_module_path
-        self.teacher_norm_module_path = teacher_norm_module_path
         self.eps = eps
         self.unigrams = torch.ones(output_size)
         self.num_negative_samples = num_negative_samples
@@ -148,26 +144,20 @@ class CRDLoss(nn.Module):
         loss = - (log_d1.sum(0) + log_d0.view(-1, 1).sum(0)) / batch_size
         return loss
 
-    def forward(self, student_io_dict, teacher_io_dict, *args, **kwargs):
+    def forward(self, nornamize_s_out,normalize_t_out,pos_idx,contrast_idx,linear_s_out,linear_t_out, *args, **kwargs):
         """
         pos_idx: the indices of these positive samples in the dataset, size [batch_size]
         contrast_idx: the indices of negative samples, size [batch_size, nce_k]
         """
-        teacher_linear_outputs = teacher_io_dict[self.teacher_norm_module_path]['output']
-        student_linear_outputs = student_io_dict[self.student_norm_module_path]['output']
-        supp_dict = student_io_dict[self.student_empty_module_path]['input']
-        pos_idx, contrast_idx = supp_dict['pos_idx'], supp_dict.get('contrast_idx', None)
-        device = student_linear_outputs.device
+        device = nornamize_s_out.device
         pos_idx = pos_idx.to(device)
         if contrast_idx is not None:
             contrast_idx = contrast_idx.to(device)
-
         if device != self.probs.device:
             self.probs.to(device)
             self.alias.to(device)
             self.to(device)
-
-        out_s, out_t = self.contrast_memory(student_linear_outputs, teacher_linear_outputs, pos_idx, contrast_idx)
+        out_s, out_t = self.contrast_memory(nornamize_s_out, normalize_t_out, pos_idx, contrast_idx)
         student_contrast_loss = self.compute_contrast_loss(out_s)
         teacher_contrast_loss = self.compute_contrast_loss(out_t)
         loss = student_contrast_loss + teacher_contrast_loss

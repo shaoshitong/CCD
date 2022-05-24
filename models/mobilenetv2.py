@@ -7,10 +7,22 @@ import torch
 import torch.nn as nn
 import math
 
-__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux','mobilenetV2_spkd']
+
+__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux','mobilenetV2_spkd','mobilenetv2_crd']
 
 BN = None
 
+class Normalizer4CRD(nn.Module):
+    def __init__(self, linear, power=2):
+        super().__init__()
+        self.linear = linear
+        self.power = power
+
+    def forward(self, x):
+        z = self.linear(x)
+        norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
+        out = z.div(norm)
+        return out
 
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
@@ -26,6 +38,7 @@ def conv_1x1_bn(inp, oup):
         nn.BatchNorm2d(oup),
         nn.ReLU(inplace=True)
     )
+
 
 
 class InvertedResidual(nn.Module):
@@ -336,6 +349,105 @@ class MobileNetV2_SPKD(MobileNetV2):
         return f4,out
 
 
+class MobileNetV2_CRD(nn.Module):
+    def __init__(self,T,
+                 feature_dim,
+                 input_size=32,
+                 width_mult=1.,
+                 remove_avg=False):
+        super(MobileNetV2_CRD, self).__init__()
+        self.remove_avg = remove_avg
+
+        # setting of inverted residual blocks
+        self.interverted_residual_setting = [
+            # t, c, n, s
+            [1, 16, 1, 1],
+            [T, 24, 2, 1],
+
+            [T, 32, 3, 2],
+
+            [T, 64, 4, 2],
+            [T, 96, 3, 1],
+
+            [T, 160, 3, 2],
+            [T, 320, 1, 1],
+        ]
+
+        # building first layer
+        assert input_size % 32 == 0
+        input_channel = int(32 * width_mult)
+        self.conv1 = conv_bn(3, input_channel, 1)
+
+        # building inverted residual blocks
+        self.blocks = nn.ModuleList([])
+        for t, c, n, s in self.interverted_residual_setting:
+            output_channel = int(c * width_mult)
+            layers = []
+            strides = [s] + [1] * (n - 1)
+            for stride in strides:
+                layers.append(
+                    InvertedResidual(input_channel, output_channel, stride, t)
+                )
+                input_channel = output_channel
+            self.blocks.append(nn.Sequential(*layers))
+
+        self.last_channel = int(1280 * width_mult) if width_mult > 1.0 else 1280
+        self.conv2 = conv_1x1_bn(input_channel, self.last_channel)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.classifier = nn.Linear(self.last_channel, feature_dim)
+        linear = nn.Linear(self.last_channel,128,bias=True)
+        self.normalizer = Normalizer4CRD(linear, power=2)
+        self._initialize_weights()
+
+    def get_bn_before_relu(self):
+        bn1 = self.blocks[1][-1].conv[-1]
+        bn2 = self.blocks[2][-1].conv[-1]
+        bn3 = self.blocks[4][-1].conv[-1]
+        bn4 = self.blocks[6][-1].conv[-1]
+        return [bn1, bn2, bn3, bn4]
+
+    def get_feat_modules(self):
+        feat_m = nn.ModuleList([])
+        feat_m.append(self.conv1)
+        feat_m.append(self.blocks)
+        return feat_m
+
+
+    def forward(self, x):
+
+        out = self.conv1(x)
+        out = self.blocks[0](out)
+        out = self.blocks[1](out)
+        out = self.blocks[2](out)
+        out = self.blocks[3](out)
+        out = self.blocks[4](out)
+        out = self.blocks[5](out)
+        out = self.blocks[6](out)
+        out = self.conv2(out)
+        out = self.avgpool(out)
+        f=out
+        out = out.view(out.size(0), -1)
+        out = self.classifier(out)
+        crdout=self.normalizer(f)
+        return crdout,out
+
+
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                n = m.weight.size(1)
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
+
 def mobilenetv2_T_w(T, W, feature_dim=100):
     model = MobileNetV2(T=T, feature_dim=feature_dim, width_mult=W)
     return model
@@ -348,8 +460,10 @@ def mobilenetV2_aux(num_classes):
     return MobileNetv2_Auxiliary(6, 0.5, num_classes)
 
 def mobilenetV2_spkd(num_classes):
-    return MobileNetV2_SPKD(6,0.5,num_classes)
+    return MobileNetV2_SPKD(T=6,width_mult=0.5,feature_dim=num_classes)
 
+def mobilenetv2_crd(num_classses):
+    return MobileNetV2_CRD(T=6,width_mult=0.5,feature_dim=num_classses)
 
 if __name__ == '__main__':
     x = torch.randn(2, 3, 32, 32)

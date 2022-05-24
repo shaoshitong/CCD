@@ -17,6 +17,18 @@ model_urls = {
 }
 
 
+class Normalizer4CRD(nn.Module):
+    def __init__(self, linear, power=2):
+        super().__init__()
+        self.linear = linear
+        self.power = power
+
+    def forward(self, x):
+        z = self.linear(x)
+        norm = z.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
+        out = z.div(norm)
+        return out
+
 class VGG(nn.Module):
 
     def __init__(self, cfg, batch_norm=False, num_classes=1000):
