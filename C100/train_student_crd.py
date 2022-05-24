@@ -31,11 +31,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='G:/data/cifar100', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='resnet8x4_crd', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='resnet32x4_crd', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/resnet32x4.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='wrn_40_2_crd', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='wrn_16_2_crd', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='C:/Users/Administrator/.cache/torch/hub/checkpoints/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -44,7 +44,7 @@ parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR 
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
 parser.add_argument('--batch-size', type=int, default=128, help='batch size')
-parser.add_argument('--num-workers', type=int, default=4, help='the number of workers')
+parser.add_argument('--num-workers', type=int, default=2, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd-T', type=float, default=4, help='temperature for KD distillation')
@@ -104,8 +104,12 @@ testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=Tr
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,num_workers=args.num_workers,
                                     pin_memory=(torch.cuda.is_available()))
 
-testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,num_workers=4,
+testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,num_workers=2,
                                     pin_memory=(torch.cuda.is_available()))
+
+
+
+
 
 
 print('==> Building model..')
