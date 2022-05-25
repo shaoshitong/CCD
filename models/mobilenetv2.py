@@ -8,7 +8,7 @@ import torch.nn as nn
 import math
 
 
-__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux','mobilenetV2_spkd','mobilenetv2_crd']
+__all__ = ['mobilenetv2_T_w', 'mobilenetV2', 'mobilenetV2_aux','mobilenetV2_spkd','mobilenetV2_crd']
 
 BN = None
 
@@ -463,7 +463,7 @@ def mobilenetV2_aux(num_classes):
 def mobilenetV2_spkd(num_classes):
     return MobileNetV2_SPKD(T=6,width_mult=0.5,feature_dim=num_classes)
 
-def mobilenetv2_crd(num_classses):
+def mobilenetV2_crd(num_classses):
     return MobileNetV2_CRD(T=6,width_mult=0.5,feature_dim=num_classses)
 
 if __name__ == '__main__':
