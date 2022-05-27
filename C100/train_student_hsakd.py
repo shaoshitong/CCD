@@ -365,10 +365,10 @@ if __name__ == '__main__':
             supported_flops=sum(flops[0].values())
             print("flops",supported_flops,"count",unsupported_operator_number) # 0,32
             begin=time.time()
-            for i in range(100):
+            for i in range(5000):
                 model(input,target)
             end=time.time()
-            use_time=(end-begin)/100
+            use_time=(end-begin)/5000
             print("use time: {}h,{}m,{}s".format(use_time//3600,use_time%3600//60,use_time%60))
             """
             flops 259.26172672000007 count 93

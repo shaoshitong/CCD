@@ -258,7 +258,7 @@ if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.SSKDLoss(args.kd_T)
+    criterion_div = losses.SSKDLoss()
     if args.evaluate:
         print('load pre-trained weights from: {}'.format(
             os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))
@@ -306,14 +306,14 @@ if __name__ == '__main__':
             supported_flops=sum(flops[0].values())
             print("flops",supported_flops,"count",unsupported_operator_number) # 0,32
             begin=time.time()
-            for i in range(100):
+            for i in range(5000):
                 model(input,target)
             end=time.time()
-            use_time=(end-begin)/100
+            use_time=(end-begin)/5000
             print("use time: {}h,{}m,{}s".format(use_time//3600,use_time%3600//60,use_time%60))
             """
-            flops 259.26172672000007 count 93
-            use time: 0.0h,0.0m,0.03333757162094116s
+            flops 110.446772224 count 68
+            use time: 0.0h,0.0m,0.01808670997619629s
             """
             exit(-1)
         if args.resume:
