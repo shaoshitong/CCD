@@ -17,7 +17,7 @@ import torchvision
 import torchvision.transforms as transforms
 from utils import cal_param_size, cal_multi_adds
 from data.datasets import PolicyDatasetC10,PolicyDatasetC100
-
+from fvcore.nn import FlopCountAnalysis,flop_count_table,flop_count
 from bisect import bisect_right
 import time
 import math,losses
@@ -28,19 +28,19 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='C:/Users/aurora_A/.cache/torch/hub/checkpoints/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[300,360,420], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=480, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=256, help='batch size')
+parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
+parser.add_argument('--batch-size', type=int, default=128, help='batch size')
 parser.add_argument('--num-workers', type=int, default=4, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
@@ -51,6 +51,7 @@ parser.add_argument('--resume', '-r', action='store_true', help='resume from che
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='network architecture')
 parser.add_argument('--i', type=int, default=1, help='few-shot ratio of training samples ')
+parser.add_argument('--flops-calcuate',action='store_true')
 
 # global hyperparameter set
 args = parser.parse_args()
@@ -89,7 +90,7 @@ trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=Tr
                                             transforms.Normalize([0.5071, 0.4867, 0.4408],
                                                                 [0.2675, 0.2565, 0.2761])
                                         ]))
-# trainset = PolicyDatasetC100(trainset)
+trainset = PolicyDatasetC100(trainset)
 testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
                                         transform=transforms.Compose([
                                             transforms.ToTensor(),
@@ -127,7 +128,7 @@ net =  torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
 tnet = tmodel(num_classes=num_classes).cuda()
-tnet.load_state_dict(checkpoint['state_dict'])
+tnet.load_state_dict(checkpoint['state_dict'],strict=False)
 tnet.eval()
 tnet =  torch.nn.DataParallel(tnet)
 
@@ -294,7 +295,44 @@ if __name__ == '__main__':
         criterion_list.append(criterion_cls)  # classification loss
         criterion_list.append(criterion_div)  # KL divergence loss, original knowledge distillation
         criterion_list.cuda()
+        if args.flops_calcuate:
+            input,target=next(iter(trainloader))
+            if input.ndim == 5:
+                b, m, c, h, w = input.shape
+                input :torch.Tensor= input.view(-1, c, h, w).cuda()
+            target = target.cuda()
+            target = target.view(-1)
+            tnet=tnet.module
+            net=net.module
+            class Analysis(nn.Module):
+                def __init__(self,net,tnet,dis):
+                    super(Analysis, self).__init__()
+                    self.net=net
+                    self.tnet=tnet
+                    self.dis=dis
+                def forward(self,data,target):
+                    with torch.no_grad():
+                        tlogit = self.tnet(data)
+                    logit = self.net(data)
+                    return self.dis(logit,tlogit,target)
 
+
+            model=Analysis(net,tnet,criterion_div).cuda()
+            flops=flop_count(model,(input,target))
+            unsupported_operator_number=sum(flops[1].values())
+            supported_flops=sum(flops[0].values())
+            print("flops",supported_flops,"count",unsupported_operator_number) # 0,32
+            begin=time.time()
+            for i in range(100):
+                model(input,target)
+            end=time.time()
+            use_time=(end-begin)/100
+            print("use time: {}h,{}m,{}s".format(use_time//3600,use_time%3600//60,use_time%60))
+            """
+            flops 110.429995008 count 36
+            use time: 0.0h,0.0m,0.01575946092605591s
+            """
+            exit(-1)
 
         if args.resume:
             print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-class SinglePPKDLoss(nn.KLDivLoss):
+class CCDLoss(nn.KLDivLoss):
     def __init__(self, temperature, alpha=None, beta=None, p=0.5,reduction='batchmean', **kwargs):
         super().__init__(reduction=reduction)
         self.temperature = temperature
@@ -21,7 +21,7 @@ class SinglePPKDLoss(nn.KLDivLoss):
                                     torch.softmax(teacher_output[b1_indices] / self.temperature, dim=1))
         b1=teacher_output[b1_indices]
         b2=teacher_output[b2_indices]
-        cosine=(b1*b2).sum(-1)/(b1.pow(2).sum(-1).sqrt()*b2.pow(2).sum(-1).sqrt())+1
+        cosine=F.cosine_similarity(b1,b2)+1
         augmented_soft_loss = self.kl_loss(torch.log_softmax(student_output[b2_indices] / self.temperature, dim=1),
                                     torch.softmax(teacher_output[b2_indices] / self.temperature, dim=1))*cosine.unsqueeze(-1)
         augmented_soft_loss = augmented_soft_loss.sum(-1).mean()

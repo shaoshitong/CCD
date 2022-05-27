@@ -146,7 +146,7 @@ class CRDLoss(nn.Module):
         loss = - (log_d1.sum(0) + log_d0.view(-1, 1).sum(0)) / batch_size
         return loss
 
-    def forward(self, nornamize_s_out,normalize_t_out,pos_idx,contrast_idx,linear_s_out,linear_t_out,targets, *args, **kwargs):
+    def forward(self, nornamize_s_out,normalize_t_out,pos_idx,contrast_idx,linear_s_out,linear_t_out,targets):
         """
         pos_idx: the indices of these positive samples in the dataset, size [batch_size]
         contrast_idx: the indices of negative samples, size [batch_size, nce_k]

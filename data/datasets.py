@@ -185,6 +185,7 @@ class PolicyDatasetC10(BaseDatasetWrapper):
         return sample, target
 
 
+
 class PolicyDatasetC100(BaseDatasetWrapper):
     def __init__(self, org_dataset, p=0.3):
         super(PolicyDatasetC100, self).__init__(org_dataset)

@@ -22,10 +22,7 @@ from bisect import bisect_right
 import time
 import math,losses
 
-
 scaler=torch.cuda.amp.GradScaler()
-
-
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')

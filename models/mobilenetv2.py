@@ -463,8 +463,8 @@ def mobilenetV2_aux(num_classes):
 def mobilenetV2_spkd(num_classes):
     return MobileNetV2_SPKD(T=6,width_mult=0.5,feature_dim=num_classes)
 
-def mobilenetV2_crd(num_classses):
-    return MobileNetV2_CRD(T=6,width_mult=0.5,feature_dim=num_classses)
+def mobilenetV2_crd(num_classes):
+    return MobileNetV2_CRD(T=6,width_mult=0.5,feature_dim=num_classes)
 
 if __name__ == '__main__':
     x = torch.randn(2, 3, 32, 32)

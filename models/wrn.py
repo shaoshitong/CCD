@@ -9,7 +9,7 @@ Original Author: Wei Yang
 
 __all__ = ['wrn', 'wrn_40_2_aux', 'wrn_16_2_aux', 'wrn_16_1', 'wrn_16_2', 'wrn_40_1', 'wrn_40_2',
              'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd','wrn_40_1_crd','wrn_16_2_crd',
-           'wrn_40_2_crd']
+           'wrn_40_2_crd','wrn_16_2_sskd','wrn_40_1_sskd','wrn_40_2_sskd']
 
 
 class Normalizer4CRD(nn.Module):
@@ -220,6 +220,31 @@ class WideResNet_SPKD(WideResNet):
         out = self.fc(out)
         return f4,out
 
+
+class WideResNet_SSKD(WideResNet):
+    def __init__(self, depth, num_classes, widen_factor=1, dropRate=0.0):
+        super(WideResNet_SSKD, self).__init__(depth,num_classes,widen_factor,dropRate)
+        self.ss_module=nn.Sequential(
+            nn.Linear(self.nChannels, self.nChannels),
+            nn.ReLU(inplace=True),
+            nn.Linear(self.nChannels, self.nChannels)
+        )
+    def forward(self, x, is_feat=False, preact=False):
+        out = self.conv1(x)
+        f0 = out
+        out = self.block1(out)
+        f1 = out
+        out = self.block2(out)
+        f2 = out
+        out = self.block3(out)
+        f3 = out
+        out = self.relu(self.bn1(out))
+        out = F.avg_pool2d(out, 8)
+        out = out.view(-1, self.nChannels)
+        f4 = self.ss_module(out)
+        out = self.fc(out)
+        return f4,out
+
 class WideResNet_CRD(nn.Module):
     def __init__(self, depth, num_classes, widen_factor=1, dropRate=0.0):
         super(WideResNet_CRD, self).__init__()
@@ -303,6 +328,10 @@ def wrn_40_2_spkd(**kwargs):
     model = WideResNet_SPKD(depth=40, widen_factor=2, **kwargs)
     return model
 
+def wrn_40_2_sskd(**kwargs):
+    model = WideResNet_SSKD(depth=40, widen_factor=2, **kwargs)
+    return model
+
 def wrn_40_2_crd(**kwargs):
     model = WideResNet_CRD(depth=40, widen_factor=2, **kwargs)
     return model
@@ -324,6 +353,10 @@ def wrn_40_1_crd(**kwargs):
     model = WideResNet_CRD(depth=40, widen_factor=1, **kwargs)
     return model
 
+def wrn_40_1_sskd(**kwargs):
+    model = WideResNet_SSKD(depth=40, widen_factor=1, **kwargs)
+    return model
+
 
 def wrn_16_2(**kwargs):
     model = WideResNet(depth=16, widen_factor=2, **kwargs)
@@ -339,6 +372,10 @@ def wrn_16_2_spkd(**kwargs):
 
 def wrn_16_2_crd(**kwargs):
     model = WideResNet_CRD(depth=16, widen_factor=2, **kwargs)
+    return model
+
+def wrn_16_2_sskd(**kwargs):
+    model = WideResNet_SSKD(depth=16, widen_factor=2, **kwargs)
     return model
 
 def wrn_16_1(**kwargs):
