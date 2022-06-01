@@ -234,6 +234,66 @@ class PolicyDatasetC100(BaseDatasetWrapper):
         ])
         return sample, target
 
+class PolicyDatasetImageNet(BaseDatasetWrapper):
+    def __init__(self, org_dataset, p=0.2):
+        super(PolicyDatasetImageNet, self).__init__(org_dataset)
+        self.transform = org_dataset.transform
+        org_dataset.transform = None
+        self.org_dataset=org_dataset
+        print("the probability of ImageNet is {}".format(p))
+        self.policies = [
+            SubPolicy(p, 'posterize', 8),
+            SubPolicy(p, 'solarize', 5),
+            SubPolicy(p, 'equalize', 8),
+            SubPolicy(p, 'posterize', 7),
+            SubPolicy(p, 'equalize', 7),
+
+            SubPolicy(p, 'equalize', 4),
+            SubPolicy(p, 'solarize', 3),
+            SubPolicy(p, 'posterize', 5),
+            SubPolicy(p, 'rotate', 3),
+            SubPolicy(p, 'equalize', 8),
+
+            SubPolicy(p, 'rotate', 8),
+            SubPolicy(p, 'rotate', 9),
+            SubPolicy(p, 'equalize', 7),
+            SubPolicy(p, 'invert', 4),
+            SubPolicy(p, 'color', 4),
+
+            SubPolicy(p, 'rotate', 8),
+            SubPolicy(p, 'color', 8),
+            SubPolicy(p, 'sharpness', 7),
+            SubPolicy(p, 'shearX', 5),
+            SubPolicy(p, 'color', 0),
+
+            SubPolicy(p, 'equalize', 7),
+            SubPolicy(p, 'solarize', 5),
+            SubPolicy(p, 'invert', 4),
+            SubPolicy(p, 'color', 4),
+            SubPolicy(p, 'equalize', 8)
+
+        ]
+        self.policies_len = len(self.policies)
+
+    def __getitem__(self, index):
+        sample, target = super(PolicyDatasetImageNet, self).__getitem__(index)
+        new_sample = sample
+        for i in range(self.policies_len):
+            new_sample, label = self.policies[i](new_sample)
+        new_sample = self.transform(new_sample).detach()
+        sample = self.transform(sample).detach()
+        if isinstance(target, torch.Tensor) and target.ndim == 2 and target.shape[-1] != 1:
+            target = target.argmax(1)
+        elif not isinstance(target, torch.Tensor):
+            target = torch.LongTensor([target])
+        target = target.unsqueeze(0).expand(2, -1)  # 2,1
+        sample = torch.stack([  # 2,XXX
+            sample,
+            new_sample,
+        ])
+        return sample, target
+
+
 
 class ContrastiveDataset(BaseDatasetWrapper):
     def __init__(self, org_dataset, num_negative_samples, mode, ratio,num_classes):

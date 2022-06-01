@@ -235,7 +235,7 @@ def test(epoch, criterion_cls, net):
         for batch_idx, (inputs, target) in enumerate(testloader):
             batch_start_time = time.time()
             input, target = inputs.cuda(), target.cuda()
-            sf4,logits = net(input)
+            ss_s_out,logits = net(input)
             loss_cls = torch.tensor(0.).cuda()
             loss_cls = loss_cls + criterion_cls(logits, target)
 
@@ -313,7 +313,7 @@ if __name__ == '__main__':
             print("use time: {}h,{}m,{}s".format(use_time//3600,use_time%3600//60,use_time%60))
             """
             flops 110.446772224 count 68
-            use time: 0.0h,0.0m,0.01808670997619629s
+            use time: 0.0h,0.0m,0.01789737901687622s
             """
             exit(-1)
         if args.resume:
