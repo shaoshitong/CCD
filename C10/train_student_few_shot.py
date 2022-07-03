@@ -10,8 +10,6 @@ sys.path.append(os.path.join(os.getcwd()))
 import shutil
 import argparse
 import numpy as np
-
-
 import models
 import torchvision
 import torchvision.transforms as transforms
@@ -30,7 +28,7 @@ parser.add_argument('--data', default='./data/', type=str, help='Dataset directo
 parser.add_argument('--dataset', default='cifar10', type=str, help='Dataset name')
 parser.add_argument('--arch', default='resnet20', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='resnet56', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='resnet56.pth.tar', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='./checkpoint/resnet56.pth.tar', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')

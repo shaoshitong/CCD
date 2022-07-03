@@ -29,12 +29,11 @@ import math, losses
 scaler = torch.cuda.amp.GradScaler()
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/data/data', type=str, help='Dataset directory')
+parser.add_argument('--data', default='./data', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2_crd', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2_crd', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str,
-                    help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='./checkpoint/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -53,7 +52,7 @@ parser.add_argument('--resume', '-r', action='store_true', help='resume from che
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='network architecture')
 parser.add_argument('--i', type=int, default=1, help='few-shot ratio of training samples ')
-parser.add_argument('--flops-calcuate', action='store_true', help='count the number of floating point operations')
+parser.add_argument('--flops-calculate', action='store_true', help='count the number of floating point operations')
 
 # global hyperparameter set
 args = parser.parse_args()

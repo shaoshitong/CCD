@@ -27,11 +27,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data', default='/home/Bigdata/ilsvrc2012/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='./ilsvrc2012/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='imagenet', type=str, help='Dataset name')
 parser.add_argument('--arch', default='resnet18_imagenet', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='resnet34_imagenet', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/resnet34-imagenet.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='./checkpoint/resnet34-imagenet.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--milestones', default=[60,120,180], type=list, help='milestones for lr-multistep')

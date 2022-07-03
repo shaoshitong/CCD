@@ -3,10 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-"""
-Original Author: Wei Yang
-"""
-
 __all__ = ['wrn', 'wrn_40_2_aux', 'wrn_16_2_aux', 'wrn_16_1', 'wrn_16_2', 'wrn_40_1', 'wrn_40_2',
              'wrn_40_1_aux','wrn_16_2_spkd','wrn_40_1_spkd','wrn_40_2_spkd','wrn_40_1_crd','wrn_16_2_crd',
            'wrn_40_2_crd','wrn_16_2_sskd','wrn_40_1_sskd','wrn_40_2_sskd']

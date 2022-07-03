@@ -25,24 +25,24 @@ import math
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar10', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2', type=str, help='network architecture')
-parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
+parser.add_argument('--arch', default='resnet20', type=str, help='network architecture')
+parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
-parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
+parser.add_argument('--milestones', default=[91,136], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
-parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=64, help='batch size')
+parser.add_argument('--epochs', type=int, default=182, help='number of epochs to train')
+parser.add_argument('--batch-size', type=int, default=128, help='batch size')
 parser.add_argument('--num-workers', type=int, default=8, help='number workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD distillation')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
-parser.add_argument('--checkpoint-dir', default='/home/Bigdata/ckpt/ilsvrc2012/teacher', type=str, help='checkpoint dir')
+parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='checkpoint dir')
 
 
 # global hyperparameter set

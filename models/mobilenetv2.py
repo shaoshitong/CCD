@@ -1,7 +1,3 @@
-"""
-MobileNetV2 implementation used in
-<Knowledge Distillation via Route Constrained Optimization>
-"""
 
 import torch
 import torch.nn as nn

@@ -21,11 +21,11 @@ import time
 import math
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/data/data/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='./data/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2_aux', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2_aux', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/kd/store/train_teacher_cifar_arch_wrn_40_2_aux_dataset_cifar100_seed0/wrn_40_2_aux_best.pth.tar', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='./checkpoint/wrn_40_2_aux_best.pth.tar', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -41,7 +41,7 @@ parser.add_argument('--kd_T', type=float, default=3, help='temperature for KD di
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='directory fot storing checkpoints')
-parser.add_argument('--flops-calcuate', action='store_true', help='count the number of floating point operations')
+parser.add_argument('--flops-calculate', action='store_true', help='count the number of floating point operations')
 
 
 # global hyperparameter set

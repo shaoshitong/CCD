@@ -144,7 +144,7 @@ class PolicyDatasetC10(BaseDatasetWrapper):
     def __init__(self, org_dataset, p=0.5):
         super(PolicyDatasetC10, self).__init__(org_dataset)
         self.transform = org_dataset.transform
-        print("the probability of CIFAR-100 is {}".format(p))
+        print("the probability of CIFAR-10 is {}".format(p))
         org_dataset.transform = None
         self.policies = [
             SubPolicy(p, 'invert', 7),
