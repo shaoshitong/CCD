@@ -29,11 +29,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='./data', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/data/data/cifar100/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='./checkpoint/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/wrn_40_2.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -280,7 +280,7 @@ if __name__ == '__main__':
         criterion_list.append(criterion_cls)  # classification loss
         criterion_list.append(criterion_div)  # KL divergence loss, original knowledge distillation
         criterion_list.cuda()
-        if args.flops_calcuate:
+        if args.flops_calculate:
             input,target=next(iter(trainloader))
             if input.ndim == 5:
                 b, m, c, h, w = input.shape

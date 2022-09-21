@@ -290,7 +290,7 @@ if __name__ == '__main__':
         criterion_list.append(criterion_div)  # KL divergence loss, original knowledge distillation
         criterion_list.cuda()
 
-        if args.flops_calcuate:
+        if args.flops_calculate:
             input, target, pos_idx, contrast_idx = next(iter(trainloader))
             if input.ndim == 5:
                 b, m, c, h, w = input.shape
