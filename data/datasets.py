@@ -234,6 +234,58 @@ class PolicyDatasetC100(BaseDatasetWrapper):
         ])
         return sample, target
 
+
+class RADatasetC100(BaseDatasetWrapper):
+    def __init__(self, org_dataset):
+        super(RADatasetC100, self).__init__(org_dataset)
+        self.transform = org_dataset.transform
+        org_dataset.transform = None
+        self.org_dataset=org_dataset
+        self.RandAugment = transforms.RandAugment(3,5)
+
+    def __getitem__(self, index):
+        sample, target = super(RADatasetC100, self).__getitem__(index)
+        new_sample = sample
+        new_sample = self.RandAugment(new_sample)
+        new_sample = self.transform(new_sample).detach()
+        sample = self.transform(sample).detach()
+        if isinstance(target, torch.Tensor) and target.ndim == 2 and target.shape[-1] != 1:
+            target = target.argmax(1)
+        elif not isinstance(target, torch.Tensor):
+            target = torch.LongTensor([target])
+        target = target.unsqueeze(0).expand(2, -1)  # 2,1
+        sample = torch.stack([  # 2,XXX
+            sample,
+            new_sample,
+        ])
+        return sample, target
+
+
+class AADatasetC100(BaseDatasetWrapper):
+    def __init__(self, org_dataset):
+        super(AADatasetC100, self).__init__(org_dataset)
+        self.transform = org_dataset.transform
+        org_dataset.transform = None
+        self.org_dataset=org_dataset
+        self.RandAugment = transforms.RandAugment(3,5)
+
+    def __getitem__(self, index):
+        sample, target = super(AADatasetC100, self).__getitem__(index)
+        new_sample = sample
+        new_sample = self.RandAugment(new_sample)
+        new_sample = self.transform(new_sample).detach()
+        sample = self.transform(sample).detach()
+        if isinstance(target, torch.Tensor) and target.ndim == 2 and target.shape[-1] != 1:
+            target = target.argmax(1)
+        elif not isinstance(target, torch.Tensor):
+            target = torch.LongTensor([target])
+        target = target.unsqueeze(0).expand(2, -1)  # 2,1
+        sample = torch.stack([  # 2,XXX
+            sample,
+            new_sample,
+        ])
+        return sample, target
+
 class PolicyDatasetImageNet(BaseDatasetWrapper):
     def __init__(self, org_dataset, p=0.2):
         super(PolicyDatasetImageNet, self).__init__(org_dataset)

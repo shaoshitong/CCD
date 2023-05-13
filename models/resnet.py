@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 
 
-__all__ = ['resnet56_aux', 'resnet20_aux', 'resnet32x4_aux', 'resnet8x4_aux', 'resnet8', 'resnet8x4', 'resnet20','resnet56',
+__all__ = ['resnet56_aux', 'resnet20_aux', 'resnet32x4_aux', 'resnet8x4_aux', 'resnet8', 'resnet8x4', 'resnet20','resnet56','resnet110',
            'resnet8_spkd','resnet20_spkd','resnet56_spkd','resnet8x4_spkd','resnet32x4_spkd','resnet32x4','resnet8_crd',
            'resnet20_crd','resnet56_crd','resnet8x4_crd','resnet32x4_crd']
 

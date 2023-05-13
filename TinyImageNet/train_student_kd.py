@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 
 
+from data import TinyImageNetInstance,TinyImageNet
 import models
 import torchvision
 import torchvision.transforms as transforms
@@ -28,33 +29,33 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/data/data/cifar100/', type=str, help='Dataset directory')
-parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
-parser.add_argument('--arch', default='resnet20', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='resnet110', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ilsvrc2012/teacher/resnet110.pth', type=str, help='pre-trained weights of teacher')
-parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--data', default='/home/Bigdata/tiny-imagenet/tiny-imagenet-200/', type=str, help='Dataset directory')
+parser.add_argument('--dataset', default='tinyimagenet', type=str, help='Dataset name')
+parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='/home/sst/product/Good-DA-in-KD/save/models_tinyimagenet_v2/wrn_40_2_vanilla/ckpt_epoch_240.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
 parser.add_argument('--milestones', default=[150,180,210], type=list, help='milestones for lr-multistep')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t',help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=128, help='batch size')
+parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=4, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
 parser.add_argument('--kd_T', type=float, default=4, help='temperature for KD distillation')
-parser.add_argument('--kd_alpha', type=float, default=0.5, help='alpha for KD distillation')
-parser.add_argument('--kd_weight', type=float, default=2, help='weight for KD distillation')
+parser.add_argument('--weight',default="1,1,1,1",type=str,help = "weight [L_ce,L_A,L_kd,L_T]")# weight
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--evaluate', '-e', action='store_true', help='evaluate model')
 parser.add_argument('--checkpoint-dir', default='./checkpoint', type=str, help='network architecture')
-parser.add_argument('--i', type=int, default=1, help='few-shot ratio of training samples ')
+parser.add_argument('--i', type=int, default=1, help='few-shot ratio of training samples')
 parser.add_argument('--flops-calculate',action='store_true')
 
 # global hyperparameter set
 args = parser.parse_args()
+args.weight = [float(w) for w in args.weight.split(",")]
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 log_txt = 'result/'+ 'tarch' + '_' +  args.tarch + '_'+\
@@ -79,47 +80,45 @@ np.random.seed(args.manual_seed)
 torch.manual_seed(args.manual_seed)
 torch.cuda.manual_seed_all(args.manual_seed)
 torch.set_printoptions(precision=4)
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+transform_train = transforms.Compose([
+    transforms.RandomCrop(64, padding=8),  # refer to the cifar case
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    normalize,
+])
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    normalize,
+])
 
-
-num_classes = 100
-trainset = torchvision.datasets.CIFAR100(root=args.data, train=True, download=True,
-                                        transform=transforms.Compose([
-                                            transforms.RandomCrop(32, padding=4),
-                                            transforms.RandomHorizontalFlip(),
-                                            transforms.ToTensor(),
-                                            transforms.Normalize([0.5071, 0.4867, 0.4408],
-                                                                [0.2675, 0.2565, 0.2761])
-                                        ]))
-trainset = RADatasetC100(trainset)
-testset = torchvision.datasets.CIFAR100(root=args.data, train=False, download=True,
-                                        transform=transforms.Compose([
-                                            transforms.ToTensor(),
-                                            transforms.Normalize([0.5071, 0.4867, 0.4408],
-                                                                [0.2675, 0.2565, 0.2761]),
-                                        ]))
+num_classes = 200
+trainset = TinyImageNet(root=args.data + '/train', transform=transform_train)
+trainset = PolicyDatasetC100(trainset)
+testset =  TinyImageNet(root=args.data + '/val', transform=transform_test)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True,
                                     pin_memory=(torch.cuda.is_available()))
 
 testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False,
                                     pin_memory=(torch.cuda.is_available()))
 
-
 print('==> Building model..')
 net = getattr(models, args.tarch)(num_classes=num_classes)
 net.eval()
-resolution = (1, 3, 32, 32)
+resolution = (1, 3, 64,64)
 print('Teacher Arch: %s, Params: %.2fM, Multi-adds: %.2fG'
         % (args.tarch, cal_param_size(net)/1e6, cal_multi_adds(net, resolution)/1e9))
 del(net)
 net = getattr(models, args.arch)(num_classes=num_classes)
 net.eval()
-resolution = (1, 3, 32, 32)
+resolution = (1, 3, 64,64)
 print('Student Arch: %s, Params: %.2fM, Multi-adds: %.2fG'
         % (args.arch, cal_param_size(net)/1e6, cal_multi_adds(net, resolution)/1e9))
 del(net)
 
 
-print('load pre-trained teacher weights from: {}'.format(args.tcheckpoint))     
+print('load pre-trained teacher weights from: {}'.format(args.tcheckpoint))
 checkpoint = torch.load(args.tcheckpoint, map_location=torch.device('cpu'))
 
 model = getattr(models, args.arch)
@@ -132,7 +131,7 @@ tnet.load_state_dict(checkpoint['model'],strict=False)
 tnet.eval()
 tnet =  torch.nn.DataParallel(tnet)
 
-_, ss_logits = net(torch.randn(2, 3, 32, 32))
+_, ss_logits = net(torch.randn(2, 3, 64,64),is_feat=True)
 num_auxiliary_branches = len(ss_logits)
 cudnn.benchmark = True
 
@@ -213,7 +212,7 @@ def train(epoch, criterion_list, optimizer):
         with torch.no_grad():
             t_logits = tnet(input)
         loss_div = torch.tensor(0.).cuda()
-        loss_div = loss_div + criterion_div(logits,t_logits,target)*args.kd_weight
+        loss_div = loss_div + criterion_div(logits,t_logits,target)
         loss = loss_div
         scaler.scale(loss).backward()
         scaler.step(optimizer)
@@ -272,10 +271,10 @@ if __name__ == '__main__':
     best_acc = 0.  # best test accuracy
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
-    criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
+    criterion_div = losses.DoupleKDLoss(temperature=args.kd_T, weight=args.weight)
 
     if args.evaluate:
-        print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))     
+        print('load pre-trained weights from: {}'.format(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar')))
         checkpoint = torch.load(os.path.join(args.checkpoint_dir, str(model.__name__) + '.pth.tar'),
                                 map_location=torch.device('cpu'))
         net.module.load_state_dict(checkpoint['net'])

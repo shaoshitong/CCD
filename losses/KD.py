@@ -13,6 +13,7 @@ class KDLoss(nn.KLDivLoss):
         cel_reduction = 'mean' if reduction == 'batchmean' else reduction
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction=cel_reduction, **kwargs)
 
+
     def forward(self, student_output, teacher_output, targets=None, *args, **kwargs):
         soft_loss = super().forward(torch.log_softmax(student_output / self.temperature, dim=1),
                                     torch.softmax(teacher_output / self.temperature, dim=1))
