@@ -29,11 +29,11 @@ scaler=torch.cuda.amp.GradScaler()
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
-parser.add_argument('--data', default='/home/Bigdata/tiny-imagenet/tiny-imagenet-200/', type=str, help='Dataset directory')
+parser.add_argument('--data', default='/home/sst/dataset/tinyimagenet/tiny-imagenet-200/', type=str, help='Dataset directory')
 parser.add_argument('--dataset', default='tinyimagenet', type=str, help='Dataset name')
-parser.add_argument('--arch', default='wrn_16_2', type=str, help='student network architecture')
-parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/sst/product/Good-DA-in-KD/save/models_tinyimagenet_v2/wrn_40_2_vanilla/ckpt_epoch_240.pth', type=str, help='pre-trained weights of teacher')
+parser.add_argument('--arch', default='resnet20', type=str, help='student network architecture')
+parser.add_argument('--tarch', default='resnet56', type=str, help='teacher network architecture')
+parser.add_argument('--tcheckpoint', default='/home/sst/dataset/tinyimagenet/models_tinyimagenet_v2/resnet56_vanilla/ckpt_epoch_240.pth', type=str, help='pre-trained weights of teacher')
 parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
@@ -60,7 +60,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 log_txt = 'result/'+ 'tarch' + '_' +  args.tarch + '_'+\
           'arch' + '_' +  args.arch + '_'+\
-          'dataset' + '_' +  args.dataset + '_'+f'_2倍_{args.i}' +'.txt'
+          'dataset' + '_' +  args.dataset + '_'+f'_2倍_{args.i}' +f'_{args.weight}_' +'.txt'
 
 log_dir = str(os.path.basename(__file__).split('.')[0]) + '_'+\
           'tarch' + '_' +  args.tarch + '_'+\
