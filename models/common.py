@@ -24,6 +24,8 @@ def timestep_embedding(timesteps, dim, max_period=10000):
     if dim % 2:
         embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
     return embedding
+
+
 # Copyright (c) OpenMMLab. All rights reserved.
 from typing import Tuple, Union
 
@@ -82,7 +84,7 @@ class PKDLoss(nn.Module):
             torch.Tensor: The calculated loss value.
         """
         if isinstance(preds_S, torch.Tensor):
-            preds_S, preds_T = (preds_S, ), (preds_T, )
+            preds_S, preds_T = (preds_S,), (preds_T,)
 
         loss = 0.
 
@@ -103,23 +105,69 @@ class PKDLoss(nn.Module):
             # vectors, and then use 1-r as the new feature imitation loss.
             loss += F.mse_loss(norm_S, norm_T) / 2
         return loss * self.loss_weight
+
+
+def cosine_similarity(a, b, eps=1e-8):
+    return (a * b).sum(1) / (a.norm(dim=1) * b.norm(dim=1) + eps)
+
+
+def pearson_correlation(a, b, eps=1e-8):
+    return cosine_similarity(a - a.mean(1).unsqueeze(1),
+                             b - b.mean(1).unsqueeze(1), eps)
+
+
+def inter_class_relation(y_s, y_t):
+    return 1 - pearson_correlation(y_s, y_t).mean()
+
+
+def intra_class_relation(y_s, y_t):
+    return inter_class_relation(y_s.transpose(0, 1), y_t.transpose(0, 1))
+
+
+class DISTLoss(nn.Module):
+    """Distilling the Knowledge in a Neural Network"""
+
+    def __init__(self, beta=2, gamma=2):
+        super(DISTLoss, self).__init__()
+        self.beta = beta
+        self.gamma = gamma
+
+    def forward(self, logits_student, logits_teacher):
+        y_s = (logits_student / 4).softmax(dim=1)
+        y_t = (logits_teacher / 4).softmax(dim=1)
+        inter_loss = 16 * inter_class_relation(y_s, y_t)
+        intra_loss = 16 * intra_class_relation(y_s, y_t)
+        loss_kd = self.beta * inter_loss + self.gamma * intra_loss
+
+        return loss_kd
+
+
 class ResBlock(nn.Module):
-    def __init__(self,channel):
+    def __init__(self, channel):
         super().__init__()
         self.block = nn.Sequential(
-            nn.GroupNorm(1,channel),
+            nn.GroupNorm(1, channel),
             nn.ReLU(inplace=True),
             nn.Conv2d(channel, channel, (3, 3), (1, 1), (1, 1), bias=True))
         # self.res_block = nn.Sequential(
         #     nn.Conv2d(channel, channel, (3, 3), (1, 1), (1, 1), bias=True))
-    def forward(self,x):
+
+    def forward(self, x):
         y = self.block(x)
         return y
 
 
 class FlowAlignModule(nn.Module):
-    def __init__(self, teacher_channel, student_channel, teacher_size, student_size, sampling=16,dirac_ratio=1.,weight=1.0):
+    def __init__(self, teacher_channel, student_channel, type="feature_based", teacher_size=None, student_size=None,
+                 sampling=16, dirac_ratio=1., weight=1.0):
         super().__init__()
+        self.type = type
+        assert self.type in ["feature_based", "logit_based"]
+        if self.type == "feature_based":
+            assert teacher_size is not None and student_size is not None, \
+                "For feature-based distillation, FlowAlignModule should " \
+                "know the feature map size of teacher intermediate output" \
+                " and student intermediate output"
         self.teacher_channel = teacher_channel
         self.student_channel = student_channel
         self.teacher_size = teacher_size
@@ -127,24 +175,35 @@ class FlowAlignModule(nn.Module):
         self.time_embedding = student_channel
         self.sampling = sampling
         self.weight = weight
-        print("dirac ratios is:",dirac_ratio)
+        print("dirac ratios is:", dirac_ratio)
         self.dirac_ratio = 1 - dirac_ratio
-        self.align_loss = PKDLoss()
-        if isinstance(teacher_size, tuple):
-            teacher_size = teacher_size[0]
-        if isinstance(student_size, tuple):
-            student_size = student_size[0]
-        d = int(teacher_size // student_size)
-        self.lowermodule = nn.Sequential(
-            nn.BatchNorm2d(self.teacher_channel),
-            nn.Conv2d(self.teacher_channel, self.student_channel, (1,1), (d, d), (0,0), bias=False))
-        self.studentmodule = nn.Identity() #nn.BatchNorm2d(self.student_channel)
-        self.flowembedding = ResBlock(self.student_channel)
-        self.time_embed = nn.Sequential(
-            nn.Linear(self.student_channel,self.student_channel),
-        )
-
-        self.iteration = 0
+        if self.type == "feature_based":
+            self.align_loss = PKDLoss()
+            if isinstance(teacher_size, tuple):
+                teacher_size = teacher_size[0]
+            if isinstance(student_size, tuple):
+                student_size = student_size[0]
+            d = int(teacher_size // student_size)
+            self.lowermodule = nn.Sequential(
+                nn.BatchNorm2d(self.teacher_channel),
+                nn.Conv2d(self.teacher_channel, self.student_channel, (1, 1), (d, d), (0, 0), bias=False))
+            self.studentmodule = nn.Identity()  # nn.BatchNorm2d(self.student_channel)
+            self.flowembedding = ResBlock(self.student_channel)
+            self.fc = nn.Identity()
+            self.time_embed = nn.Sequential(
+                nn.Linear(self.student_channel, self.student_channel),
+            )
+        else:
+            self.align_loss = DISTLoss()
+            self.lowermodule = nn.Identity()
+            self.studentmodule = nn.Identity()
+            self.flowembedding = nn.Sequential(nn.GroupNorm(1, student_channel),
+                                               nn.ReLU(inplace=True),
+                                               nn.Linear(student_channel, student_channel))
+            self.fc = nn.Linear(student_channel,teacher_channel)
+            self.time_embed = nn.Sequential(
+                nn.Linear(self.student_channel, self.student_channel),
+            )
 
     def forward(self, student_feature, teacher_feature, inference_sampling=4):
         def append_dims(x, target_dims):
@@ -152,43 +211,50 @@ class FlowAlignModule(nn.Module):
             if dims_to_append < 0:
                 raise ValueError(f"input has {x.ndim} dims but target dim is {target_dims}")
             return x[(...,) + (None,) * dims_to_append]
-        student_feature =  self.studentmodule(student_feature)
+
+        student_feature = self.studentmodule(student_feature)
         if teacher_feature is not None:
-            _len_dirac = int(self.dirac_ratio*teacher_feature.shape[0])
-            teacher_feature[:_len_dirac][torch.randperm(_len_dirac,device=student_feature.device)] \
+            _len_dirac = int(self.dirac_ratio * teacher_feature.shape[0])
+            teacher_feature[:_len_dirac][torch.randperm(_len_dirac, device=student_feature.device)] \
                 = teacher_feature[:_len_dirac].clone()
             teacher_feature = teacher_feature.contiguous()
         if self.training:
             """
             Random Sampling Aware
             """
-            inference_sampling = [1,2,4,8,16]
-            inference_sampling = np.random.choice(inference_sampling,1)[0]
+            inference_sampling = [1, 2, 4, 8, 16]
+            inference_sampling = np.random.choice(inference_sampling, 1)[0]
             indices = reversed(range(1, inference_sampling + 1))
             x = student_feature
             total_velocity = []
             loss = 0.
-            if self.iteration<0:
-                _weight = 0
-            else:
-                _weight = self.weight
-            self.iteration+=1
+            _weight = self.weight
             t_output_feature = self.lowermodule(teacher_feature)
             for i in indices:
-                _t = torch.ones(student_feature.shape[0],device=student_feature.device) * i / inference_sampling
-                _t_embed = self.time_embed(timestep_embedding(_t, self.time_embedding)).view(_t.shape[0],self.time_embedding, 1, 1)
+                _t = torch.ones(student_feature.shape[0], device=student_feature.device) * i / inference_sampling
+                if self.type == "feature_based":
+                    _t_embed = self.time_embed(timestep_embedding(_t, self.time_embedding)).view(_t.shape[0],
+                                                                                                 self.time_embedding, 1,
+                                                                                                 1)
+                else:
+                    _t_embed = self.time_embed(timestep_embedding(_t, self.time_embedding)).view(_t.shape[0],
+                                                                                                 self.time_embedding)
                 _velocity = self.flowembedding(x + _t_embed)
                 x = x - _velocity / inference_sampling
                 total_velocity.append(_velocity)
-                loss += (self.align_loss(student_feature - t_output_feature, _velocity)).mean() / inference_sampling * _weight
-            return loss, x #student_feature - torch.stack(total_velocity,0).mean(0)
+                loss += (self.align_loss(self.fc(student_feature) - t_output_feature,
+                                         self.fc(_velocity))).mean() / inference_sampling * _weight
+            return loss, x  # student_feature - torch.stack(total_velocity,0).mean(0)
         else:
             x = student_feature
             indices = reversed(range(1, inference_sampling + 1))
             for i in indices:
                 _t = torch.ones(student_feature.shape[0], device=student_feature.device) * i / inference_sampling
-                _t_embed =  self.time_embed(timestep_embedding(_t, self.time_embedding))
-                _t_embed = _t_embed.view(student_feature.shape[0], self.time_embedding, 1, 1)
+                _t_embed = self.time_embed(timestep_embedding(_t, self.time_embedding))
+                if self.type == "feature_based":
+                    _t_embed = _t_embed.view(student_feature.shape[0], self.time_embedding, 1, 1)
+                else:
+                    _t_embed = _t_embed.view(student_feature.shape[0], self.time_embedding)
                 _velocity = self.flowembedding(x + _t_embed)
                 x = x - _velocity / inference_sampling
             return torch.Tensor([0.]).to(x.device), x

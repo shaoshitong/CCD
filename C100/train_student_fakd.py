@@ -35,7 +35,7 @@ parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
 parser.add_argument('--milestones', default=[150, 180, 210], type=list, help='milestones for lr-multistep')
-parser.add_argument('--layer-weight', default=[0,0,1], type=list, help='the layer weight of network')
+parser.add_argument('--layer-weight', default=[0, 0, 0, 1], type=list, help='the layer weight of network')
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t', help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
@@ -129,7 +129,8 @@ print('load pre-trained teacher weights from: {}'.format(args.tcheckpoint))
 checkpoint = torch.load(args.tcheckpoint, map_location=torch.device('cpu'))
 
 model = getattr(models, args.arch)
-net = model(num_classes=num_classes, teacher_features=teacher_features, teacher_sizes=teacher_sizes,dirac_ratio=args.dirac_ratio,weight=args.layer_weight).cuda()
+net = model(num_classes=num_classes, teacher_features=teacher_features, teacher_sizes=teacher_sizes,
+            dirac_ratio=args.dirac_ratio, weight=args.layer_weight).cuda()
 net = torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
@@ -139,9 +140,9 @@ tnet.eval()
 tnet = torch.nn.DataParallel(tnet)
 
 ss_logits, _ = net(torch.randn(2, 3, 32, 32),
-                      [torch.randn(2, teacher_features[0], teacher_sizes[0], teacher_sizes[0]),
-                       torch.randn(2, teacher_features[1], teacher_sizes[1], teacher_sizes[1]),
-                       torch.randn(2, teacher_features[2], teacher_sizes[2], teacher_sizes[2])])
+                   [torch.randn(2, teacher_features[0], teacher_sizes[0], teacher_sizes[0]),
+                    torch.randn(2, teacher_features[1], teacher_sizes[1], teacher_sizes[1]),
+                    torch.randn(2, teacher_features[2], teacher_sizes[2], teacher_sizes[2])])
 num_auxiliary_branches = len(ss_logits)
 cudnn.benchmark = True
 
@@ -179,7 +180,7 @@ def adjust_lr(optimizer, epoch, args, step=0, all_iters_per_epoch=0):
     cur_lr = 0.
     if epoch < args.warmup_epoch:
         cur_lr = args.init_lr * float(1 + step + epoch * all_iters_per_epoch) / (
-                    args.warmup_epoch * all_iters_per_epoch)
+                args.warmup_epoch * all_iters_per_epoch)
     else:
         epoch = epoch - args.warmup_epoch
         cur_lr = args.init_lr * 0.1 ** bisect_right(args.milestones, epoch)
@@ -188,18 +189,20 @@ def adjust_lr(optimizer, epoch, args, step=0, all_iters_per_epoch=0):
         param_group['lr'] = cur_lr
     return cur_lr
 
+
 def flow_adjust_lr(optimizer, epoch, args, step=0, all_iters_per_epoch=0):
     cur_lr = 0.
     if epoch < args.warmup_epoch:
-        cur_lr = args.init_lr /100 * float(1 + step + epoch * all_iters_per_epoch) / (
-                    args.warmup_epoch * all_iters_per_epoch)
+        cur_lr = args.init_lr / 100 * float(1 + step + epoch * all_iters_per_epoch) / (
+                args.warmup_epoch * all_iters_per_epoch)
     else:
         epoch = epoch - args.warmup_epoch
-        cur_lr = args.init_lr /100 * 0.1 ** bisect_right(args.milestones, epoch)
+        cur_lr = args.init_lr / 100 * 0.1 ** bisect_right(args.milestones, epoch)
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = cur_lr
     return cur_lr
+
 
 def train(epoch, criterion_list, optimizer):
     train_loss = 0.
@@ -233,7 +236,7 @@ def train(epoch, criterion_list, optimizer):
         with torch.no_grad():
             t_features, t_logits = tnet(input, is_feat=True)
         with torch.cuda.amp.autocast(enabled=False):
-            s_features, logits, flow_loss = net(input, t_features, is_feat=True)
+            s_features, logits, flow_loss = net(input, t_features + [t_logits], is_feat=True)
             logits = logits.float()
         loss_div = torch.tensor(0.).cuda()
         loss_div = loss_div + criterion_div(logits, t_logits, target) * args.kd_weight + flow_loss * args.flow_weight
@@ -250,14 +253,16 @@ def train(epoch, criterion_list, optimizer):
         total += target.size(0)
 
         print('Epoch:{}, batch_idx:{}/{}, lr:{:.5f}, Duration:{:.2f}, Top-1 Acc:{:.4f}, Flow Loss: {:.4f}'.format(
-            epoch, batch_idx, len(trainloader), lr, time.time() - batch_start_time, (top1_num / (total)).item(),flow_loss.item()))
+            epoch, batch_idx, len(trainloader), lr, time.time() - batch_start_time, (top1_num / (total)).item(),
+            flow_loss.item()))
     with open(log_txt, 'a+') as f:
         f.write('Epoch:{}\t lr:{:.5f}\t duration:{:.3f}'
                 '\n train_loss:{:.5f}\t train_loss_div:{:.5f}'
                 .format(epoch, lr, time.time() - start_time,
                         train_loss, train_loss_div))
 
-def reset_lr_weight_decay(model,lr,weight_decay):
+
+def reset_lr_weight_decay(model, lr, weight_decay):
     small_lr_list = ['flow']
     small_lr_append = []
     large_lr_append = []
@@ -270,13 +275,15 @@ def reset_lr_weight_decay(model,lr,weight_decay):
             print(name)
         else:
             large_lr_append.append(param)
-    return [{'params': large_lr_append, 'lr': lr/100, 'weight_decay': weight_decay}],[{'params': small_lr_append, 'lr': lr/100, 'weight_decay': weight_decay}]
+    return [{'params': large_lr_append, 'lr': lr / 100, 'weight_decay': weight_decay}], [
+        {'params': small_lr_append, 'lr': lr / 100, 'weight_decay': weight_decay}]
 
-def test(epoch, criterion_cls, net,apply_sampling=False):
+
+def test(epoch, criterion_cls, net, apply_sampling=False):
     global best_acc
     net.eval()
     if apply_sampling:
-        for sampling in [1,2,4,8]:
+        for sampling in [1, 2, 4, 8]:
             test_loss_cls = 0.
             top1_num = 0
             top5_num = 0
@@ -285,8 +292,8 @@ def test(epoch, criterion_cls, net,apply_sampling=False):
                 for batch_idx, (inputs, target) in enumerate(testloader):
                     batch_start_time = time.time()
                     input, target = inputs.cuda(), target.cuda()
-                    output = net(input,inference_sampling=sampling)
-                    if isinstance(output,tuple):
+                    output = net(input, inference_sampling=sampling)
+                    if isinstance(output, tuple):
                         logits = output[0]
                     else:
                         logits = output
@@ -301,10 +308,11 @@ def test(epoch, criterion_cls, net,apply_sampling=False):
                     total += target.size(0)
 
                     print('Epoch:{}, batch_idx:{}/{}, Duration:{:.2f}, Sampling:{}, Top-1 Acc:{:.4f}'.format(
-                        epoch, batch_idx, len(testloader), time.time() - batch_start_time,sampling, (top1_num / (total)).item()))
+                        epoch, batch_idx, len(testloader), time.time() - batch_start_time, sampling,
+                        (top1_num / (total)).item()))
                 with open(log_txt, 'a+') as f:
                     f.write('test epoch:{}\t Sampling:{}\t test_loss_cls:{:.5f}\t test_acc:{:.5f}\n'
-                            .format(epoch,sampling, test_loss_cls, (top1_num / (total)).item()))
+                            .format(epoch, sampling, test_loss_cls, (top1_num / (total)).item()))
     else:
         test_loss_cls = 0.
         top1_num = 0
@@ -360,7 +368,8 @@ if __name__ == '__main__':
 
         trainable_list = nn.ModuleList([])
         trainable_list.append(net)
-        optimizer = optim.SGD(trainable_list.parameters(), lr=0.1, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+        optimizer = optim.SGD(trainable_list.parameters(), lr=0.1, momentum=0.9, weight_decay=args.weight_decay,
+                              nesterov=True)
 
         criterion_list = nn.ModuleList([])
         criterion_list.append(criterion_cls)  # classification loss

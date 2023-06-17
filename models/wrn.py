@@ -312,7 +312,8 @@ class WideResNet_CRD(nn.Module):
 
 
 class WideResNet_FAKD(nn.Module):
-    def __init__(self, depth, num_classes, teacher_features, teacher_sizes, widen_factor=1, dropRate=0.0,dirac_ratio=0.5,weight=[1,1,1]):
+    def __init__(self, depth, num_classes, teacher_features, teacher_sizes, widen_factor=1, dropRate=0.0,
+                 dirac_ratio=0.5, weight=[1, 1, 1, 1]):
         super(WideResNet_FAKD, self).__init__()
         nChannels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
         print(f"Layer Weight are {weight}")
@@ -327,19 +328,27 @@ class WideResNet_FAKD(nn.Module):
                                padding=1, bias=False)
         # 1st block
         self.block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
-        self.flow1 = FlowAlignModule(self.teacher_features[0], nChannels[1], self.teacher_sizes[0], img_size,dirac_ratio=dirac_ratio,weight=weight[0])
+        self.flow1 = FlowAlignModule(self.teacher_features[0], nChannels[1], "feature_based", self.teacher_sizes[0],
+                                     img_size, dirac_ratio=dirac_ratio, weight=weight[0])
         # 2nd block
         self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate)
         img_size = img_size // 2
-        self.flow2 = FlowAlignModule(self.teacher_features[1], nChannels[2], self.teacher_sizes[1], img_size,dirac_ratio=dirac_ratio,weight=weight[1])
+        self.flow2 = FlowAlignModule(self.teacher_features[1], nChannels[2], "feature_based", self.teacher_sizes[1],
+                                     img_size, dirac_ratio=dirac_ratio, weight=weight[1])
 
         # 3rd block
         self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
         img_size = img_size // 2
-        self.flow3 = FlowAlignModule(self.teacher_features[2], nChannels[3], self.teacher_sizes[2], img_size,dirac_ratio=dirac_ratio,weight=weight[2])
+        self.flow3 = FlowAlignModule(self.teacher_features[2], nChannels[3], "feature_based", self.teacher_sizes[2],
+                                     img_size, dirac_ratio=dirac_ratio, weight=weight[2])
         # global average pooling and classifier
         self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
+        if weight[3]==1:
+            self.logit_based = True
+        if self.logit_based:
+            self.flow4 = FlowAlignModule(num_classes, nChannels[3], "logit_based", None, None, dirac_ratio=dirac_ratio,
+                                         weight=1)
         self.fc = nn.Linear(nChannels[3], num_classes)
         self.nChannels = nChannels[3]
 
@@ -368,27 +377,30 @@ class WideResNet_FAKD(nn.Module):
 
         return [bn1, bn2, bn3]
 
-    def forward(self, x, teacher_features=None, is_feat=False, preact=False,inference_sampling=4):
+    def forward(self, x, teacher_features=None, is_feat=False, preact=False, inference_sampling=4):
         flow_loss = 0
         if teacher_features == None:
-            teacher_features = [None]*3
+            teacher_features = [None] * 3
         out = self.conv1(x)
         out = self.block1(out)
-        loss, out = self.flow1(out, teacher_features[0],inference_sampling=inference_sampling)
+        loss, out = self.flow1(out, teacher_features[0], inference_sampling=inference_sampling)
         flow_loss += loss
         f1 = out
         out = self.block2(out)
-        loss, out = self.flow2(out, teacher_features[1],inference_sampling=inference_sampling)
+        loss, out = self.flow2(out, teacher_features[1], inference_sampling=inference_sampling)
         flow_loss += loss
         f2 = out
         out = self.block3(out)
-        loss, out = self.flow3(out, teacher_features[2],inference_sampling=inference_sampling)
+        loss, out = self.flow3(out, teacher_features[2], inference_sampling=inference_sampling)
         flow_loss += loss
         f3 = out
         out = self.relu(self.bn1(out))
         out = F.avg_pool2d(out, out.size(3))
         out = out.view(-1, self.nChannels)
         f4 = out
+        if self.logit_based:
+            loss, out = self.flow4(out, teacher_features[3], inference_sampling=inference_sampling)
+            flow_loss += loss
         out = self.fc(out)
         if is_feat:
             if preact:
