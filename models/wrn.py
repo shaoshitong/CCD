@@ -346,6 +346,8 @@ class WideResNet_FAKD(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         if weight[3]==1:
             self.logit_based = True
+        else:
+            self.logit_based = False
         if self.logit_based:
             self.flow4 = FlowAlignModule(num_classes, nChannels[3], "logit_based", None, None, dirac_ratio=dirac_ratio,
                                          weight=0.1)
