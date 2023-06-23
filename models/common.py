@@ -243,7 +243,7 @@ class FlowAlignModule(nn.Module):
                 x = x - _velocity / inference_sampling
                 total_velocity.append(_velocity)
                 loss += (self.align_loss(self.fc(student_feature - _velocity),
-                                         teacher_feature)).mean() / inference_sampling * _weight
+                                         t_output_feature)).mean() / inference_sampling * _weight
             return loss, self.fc(x)  # student_feature - torch.stack(total_velocity,0).mean(0)
         else:
             x = student_feature

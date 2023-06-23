@@ -356,7 +356,7 @@ if __name__ == '__main__':
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
     if args.layer_weight[3] == 1:
-        criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=1, beta=0)
+        criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
     else:
         criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
