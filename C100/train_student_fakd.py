@@ -109,6 +109,9 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, sh
 if args.tarch == "wrn_40_2":
     teacher_features = [16 * 2, 32 * 2, 64 * 2]
     teacher_sizes = [32, 16, 8]
+elif args.tarch == "resnet56":
+    teacher_features = [16 * 2, 32 * 2, 64 * 2]
+    teacher_sizes = [32, 16, 8]
 else:
     raise NotImplementedError
 
