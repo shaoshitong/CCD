@@ -242,9 +242,13 @@ class FlowAlignModule(nn.Module):
                 _velocity = self.flowembedding(x + _t_embed)
                 x = x - _velocity / inference_sampling
                 total_velocity.append(_velocity)
-                loss += (self.align_loss(self.fc(student_feature - _velocity),
-                                         t_output_feature)).mean() / inference_sampling * _weight
-            return loss, self.fc(x)  # student_feature - torch.stack(total_velocity,0).mean(0)
+                if self.type == "feature_based":
+                    loss += (self.align_loss(self.fc(student_feature) - t_output_feature,
+                                             self.fc(_velocity))).mean() / inference_sampling * _weight
+                else:
+                    loss += (self.align_loss(self.fc(student_feature - _velocity),
+                                             t_output_feature)).mean() / inference_sampling * _weight
+            return loss, self.fc(x)
         else:
             x = student_feature
             indices = reversed(range(1, inference_sampling + 1))
