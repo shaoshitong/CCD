@@ -29,9 +29,9 @@ parser.add_argument('--data', default='/home/sst/data/cifar100/', type=str, help
 parser.add_argument('--dataset', default='cifar100', type=str, help='Dataset name')
 parser.add_argument('--arch', default='wrn_16_2_fakd', type=str, help='student network architecture')
 parser.add_argument('--tarch', default='wrn_40_2', type=str, help='teacher network architecture')
-parser.add_argument('--tcheckpoint', default='/home/Bigdata/ckpt/ccd/cifar100/wrn_40_2.pth', type=str,
+parser.add_argument('--tcheckpoint', default='/root/autodl-tmp/cifar_teachers/wrn_40_2_vanilla/ckpt_epoch_240.pth', type=str,
                     help='pre-trained weights of teacher')
-parser.add_argument('--init-lr', default=0.1, type=float, help='learning rate')
+parser.add_argument('--init-lr', default=0.05, type=float, help='learning rate')
 parser.add_argument('--weight-decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--lr-type', default='multistep', type=str, help='learning rate strategy')
 parser.add_argument('--milestones', default=[150, 180, 210], type=list, help='milestones for lr-multistep')
@@ -39,7 +39,7 @@ parser.add_argument('--layer-weight', default=[0, 0, 0, 1], type=list, help='the
 parser.add_argument('--sgdr-t', default=300, type=int, dest='sgdr_t', help='SGDR T_0')
 parser.add_argument('--warmup-epoch', default=0, type=int, help='warmup epoch')
 parser.add_argument('--epochs', type=int, default=240, help='number of epochs to train')
-parser.add_argument('--batch-size', type=int, default=128, help='batch size')
+parser.add_argument('--batch-size', type=int, default=64, help='batch size')
 parser.add_argument('--num-workers', type=int, default=4, help='the number of workers')
 parser.add_argument('--gpu-id', type=str, default='0')
 parser.add_argument('--manual_seed', type=int, default=0)
@@ -107,6 +107,9 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, sh
 if args.tarch == "wrn_40_2":
     teacher_features = [16 * 2, 32 * 2, 64 * 2]
     teacher_sizes = [32, 16, 8]
+elif args.tarch == "resnet56":
+    teacher_features = [16, 32, 64]
+    teacher_sizes = [32, 16, 8]
 else:
     raise NotImplementedError
 
@@ -135,7 +138,8 @@ net = torch.nn.DataParallel(net)
 
 tmodel = getattr(models, args.tarch)
 tnet = tmodel(num_classes=num_classes).cuda()
-tnet.load_state_dict(checkpoint['state_dict'], strict=False)
+print(checkpoint.keys())
+tnet.load_state_dict(checkpoint['model'], strict=False)
 tnet.eval()
 tnet = torch.nn.DataParallel(tnet)
 
@@ -353,7 +357,7 @@ if __name__ == '__main__':
     start_epoch = 0  # start from epoch 0 or last checkpoint epoch
     criterion_cls = nn.CrossEntropyLoss()
     if args.layer_weight[3] == 1:
-        criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=1, beta=0)
+        criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
     else:
         criterion_div = losses.KDLoss(temperature=args.kd_T, alpha=args.kd_alpha)
 
